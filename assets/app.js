@@ -19,7 +19,7 @@ var SIDO = [
 
 var state = {
   view: 'home', sel: null, q: '', shown: CFG.LIST_STEP || 30, kind: 'all',
-  filters: { open: false, night: false, sat: false },
+  filters: { open: false, night: false, sat: false, free: false },
   origin: CFG.DEFAULT_ORIGIN || { lat: 37.5663, lng: 126.9779, label: '서울시청' }, mine: false,
   data: null, dataNote: '', loadErr: false, quiz: null, stats: null
 };
@@ -75,7 +75,7 @@ function hav(a, b, c, d) {
 }
 function setDistances() { (state.data || []).forEach(function (f) { f._d = hav(state.origin.lat, state.origin.lng, f.lat, f.lng); }); }
 function fmtDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + 'm' : m < 100000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m / 1000) + 'km'; }
-function kindLabel(f) { return f.c === 'p' ? f.t + (isFree(f) ? ' · 무료' : '') : f.t; }
+function kindLabel(f) { return f.c === 'p' ? f.t + (isFree(f) ? ', 무료' : f.cost === '바우처' ? ', 마음투자 바우처' : '') : f.t; }
 
 function visible() {
   var n = now(), F = state.filters, q = state.q.replace(/\s/g, '');
@@ -85,7 +85,8 @@ function visible() {
     if (F.night && !isNight(f)) return false;
     if (F.sat && !(f.h && f.h.sat)) return false;
     if (state.kind === 'm' && f.c !== 'm') return false;
-    if (state.kind === 'free' && !isFree(f)) return false;
+    if (state.kind === 'p' && f.c !== 'p') return false;
+    if (F.free && !isFree(f)) return false;
     return true;
   }).sort(function (a, b) { return a._d - b._d; });
 }
@@ -115,13 +116,13 @@ function drawMap(fit) {
   K.pins.forEach(function (o) { o.setMap(null); });
   K.pins = [];
   var list = visible().slice(0, state.shown);
-  list.forEach(function (f) {
-    var b = document.createElement('button');
-    var s = status(f, n);
-    b.className = 'pin ' + f.c + (state.sel === f.id ? ' sel' : '');
-    b.setAttribute('aria-label', f.n + ', ' + s.t);
+  list.forEach(function (f, i) {
+    var sel = state.sel === f.id, b = document.createElement('button');
+    b.className = 'pin ' + f.c + (sel ? ' sel' : '');
+    b.setAttribute('aria-label', (i + 1) + '번 ' + f.n);
+    b.innerHTML = '<span class="pn">' + (i + 1) + '</span>' + (sel ? '<span class="pl">' + esc(f.n) + '</span>' : '');
     b.onclick = function () { select(f.id); };
-    var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, yAnchor: 0.5, xAnchor: 0.5, zIndex: state.sel === f.id ? 3 : 1, clickable: true });
+    var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, yAnchor: 1, xAnchor: 0.5, zIndex: sel ? 50 : 10 + (list.length - i), clickable: true });
     o.setMap(K.map); K.pins.push(o);
   });
   if (K.me) K.me.setMap(null);
@@ -153,23 +154,23 @@ function renderPanel() {
   if (f) { p.innerHTML = detailHTML(f, n); p.scrollTop = 0; var b = $('back'); if (b) b.focus(); return; }
 
   var list = visible(), F = state.filters;
-  var seg = [['all', '전체'], ['m', '병원·의원'], ['free', '무료 상담기관']].map(function (c) {
+  var seg = [['all', '전체'], ['m', '병원·의원'], ['p', '상담기관']].map(function (c) {
     return '<button data-kind="' + c[0] + '" aria-pressed="' + (state.kind === c[0]) + '">' + c[1] + '</button>';
   }).join('');
-  var chips = [['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
+  var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
     return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + F[c[0]] + '">' + c[1] + '</button>';
   }).join('');
   var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '">' + s[0] + '</option>'; }).join('');
-  var cards = list.slice(0, state.shown).map(function (f) {
+  var cards = list.slice(0, state.shown).map(function (f, i) {
     var s = status(f, n);
-    return '<li><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true"></i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
+    return '<li><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
       '<span class="rs">' + esc(kindLabel(f)) + ', ' + esc(shortAddr(f.a)) + '</span>' +
       (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') + '</button></li>';
   }).join('');
-  var timeOn = F.open || F.night || F.sat, hint = '';
+  var timeOn = F.open || F.night || F.sat || F.free, hint = '';
   if (!list.length) {
     hint = timeOn
-      ? '이 조건에 맞는 곳을 찾지 못했어요. 병원·의원은 아직 진료시간 정보가 없어서 시간 조건에서는 빠져요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
+      ? '이 조건에 맞는 곳을 찾지 못했어요. 병원·의원은 아직 진료시간·비용 정보가 없어서 시간 조건과 무료만에서는 빠져요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
       : '찾는 곳이 없어요. 이름을 다르게 적어 보거나 다른 지역을 골라 보세요.';
   }
   p.innerHTML =
@@ -177,7 +178,7 @@ function renderPanel() {
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름으로 찾기" value="' + esc(state.q) + '" aria-label="기관 이름으로 찾기">' +
-    '<div class="filters" role="group" aria-label="시간 조건">' + chips + '</div>' +
+    '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' : list.length.toLocaleString() + '곳') + '</p>' +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<p class="empty">' + hint + '</p>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
@@ -418,7 +419,7 @@ function go(v) {
   }
   try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
 }
-function showFreeOnMap() { state.sel = null; state.kind = 'free'; state.filters = { open: false, night: false, sat: false }; go('map'); drawMap(true); }
+function showFreeOnMap() { state.sel = null; state.kind = 'p'; state.filters = { open: false, night: false, sat: false, free: true }; go('map'); drawMap(true); }
 
 document.addEventListener('click', function (e) {
   var b = e.target.closest('button, a[data-go]'); if (!b) return;
