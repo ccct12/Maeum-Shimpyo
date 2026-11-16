@@ -18,8 +18,8 @@ var SIDO = [
 ];
 
 var state = {
-  view: 'map', sel: null, q: '', shown: CFG.LIST_STEP || 30,
-  filters: { open: false, night: false, sat: false, free: false },
+  view: 'home', sel: null, q: '', shown: CFG.LIST_STEP || 30, kind: 'all',
+  filters: { open: false, night: false, sat: false },
   origin: CFG.DEFAULT_ORIGIN || { lat: 37.5663, lng: 126.9779, label: '서울시청' }, mine: false,
   data: null, dataNote: '', loadErr: false, quiz: null, stats: null
 };
@@ -35,6 +35,7 @@ function loadData() {
       state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
       state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
       setDistances();
+      var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과와 무료 공공 상담기관 ' + state.data.length.toLocaleString() + '곳';
     })
     .catch(function () { state.loadErr = true; state.data = []; });
 }
@@ -83,7 +84,8 @@ function visible() {
     if (F.open && status(f, n).k !== 'open') return false;
     if (F.night && !isNight(f)) return false;
     if (F.sat && !(f.h && f.h.sat)) return false;
-    if (F.free && !isFree(f)) return false;
+    if (state.kind === 'm' && f.c !== 'm') return false;
+    if (state.kind === 'free' && !isFree(f)) return false;
     return true;
   }).sort(function (a, b) { return a._d - b._d; });
 }
@@ -94,16 +96,17 @@ function loadKakao() {
   if (!CFG.KAKAO_JS_KEY) { mapMsg('지도 키가 아직 설정되지 않았어요. 목록은 그대로 쓸 수 있어요.'); return; }
   var s = document.createElement('script');
   s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' + encodeURIComponent(CFG.KAKAO_JS_KEY);
-  s.onload = function () { window.kakao.maps.load(initMap); };
+  s.onload = function () { try { window.kakao.maps.load(initMap); } catch (e) { mapMsg(); } };
   s.onerror = function () { mapMsg('지도를 불러오지 못했어요. 목록은 그대로 쓸 수 있어요.'); };
   document.head.appendChild(s);
 }
-function mapMsg(t) { K.failed = true; var m = $('mapmsg'); m.textContent = t; m.hidden = false; }
+function mapMsg() { K.failed = true; $('v-map').classList.add('nomap'); }
 function initMap() {
   var km = window.kakao.maps;
   K.map = new km.Map($('kmap'), { center: new km.LatLng(state.origin.lat, state.origin.lng), level: 6 });
   K.map.addControl(new km.ZoomControl(), km.ControlPosition.RIGHT);
   $('kmap').removeAttribute('aria-hidden');
+  km.event.addListener(K.map, 'dragend', function () { $('research').hidden = false; });
   drawMap(true);
 }
 function drawMap(fit) {
@@ -115,7 +118,7 @@ function drawMap(fit) {
   list.forEach(function (f) {
     var b = document.createElement('button');
     var s = status(f, n);
-    b.className = 'pin ' + f.c + ' s-' + s.k + (state.sel === f.id ? ' sel' : '');
+    b.className = 'pin ' + f.c + (state.sel === f.id ? ' sel' : '');
     b.setAttribute('aria-label', f.n + ', ' + s.t);
     b.onclick = function () { select(f.id); };
     var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, yAnchor: 0.5, xAnchor: 0.5, zIndex: state.sel === f.id ? 3 : 1, clickable: true });
@@ -150,35 +153,41 @@ function renderPanel() {
   if (f) { p.innerHTML = detailHTML(f, n); p.scrollTop = 0; var b = $('back'); if (b) b.focus(); return; }
 
   var list = visible(), F = state.filters;
-  var chips = [['open', '지금 진료·운영 중'], ['night', '야간(20시 이후)'], ['sat', '토요일'], ['free', '무료 공공기관']].map(function (c) {
+  var seg = [['all', '전체'], ['m', '병원·의원'], ['free', '무료 상담기관']].map(function (c) {
+    return '<button data-kind="' + c[0] + '" aria-pressed="' + (state.kind === c[0]) + '">' + c[1] + '</button>';
+  }).join('');
+  var chips = [['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
     return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + F[c[0]] + '">' + c[1] + '</button>';
   }).join('');
   var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '">' + s[0] + '</option>'; }).join('');
   var cards = list.slice(0, state.shown).map(function (f) {
     var s = status(f, n);
-    return '<li><button class="card" data-id="' + esc(f.id) + '"><h3>' + esc(f.n) + '</h3><span class="dist">' + fmtDist(f._d) + '</span>' +
-      '<span class="st s-' + s.k + '">' + esc(s.t) + '</span><span class="kind" style="text-align:right">' + esc(kindLabel(f)) + '</span></button></li>';
+    return '<li><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true"></i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
+      '<span class="rs">' + esc(kindLabel(f)) + ', ' + esc(shortAddr(f.a)) + '</span>' +
+      (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') + '</button></li>';
   }).join('');
-  var hint = '';
+  var timeOn = F.open || F.night || F.sat, hint = '';
   if (!list.length) {
-    hint = F.open || F.night || F.sat
-      ? '이 조건에 맞는 곳이 지금은 없어요. 의원·병원은 아직 진료시간 정보가 없어서 시간 조건에서는 빠져요. 조건을 하나 풀어 보거나, 급하면 위의 109로 전화해도 괜찮아요.'
-      : '이 조건에 맞는 곳이 없어요. 이름을 다르게 적어 보거나 조건을 풀어 보세요.';
+    hint = timeOn
+      ? '이 조건에 맞는 곳을 찾지 못했어요. 병원·의원은 아직 진료시간 정보가 없어서 시간 조건에서는 빠져요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
+      : '찾는 곳이 없어요. 이름을 다르게 적어 보거나 다른 지역을 골라 보세요.';
   }
   p.innerHTML =
-    '<div class="where"><p class="here"><b>' + esc(state.origin.label) + '</b>' + (state.mine ? '' : ' 기준') + '에서 가까운 순이에요</p>' +
-      '<button class="btn solid" id="locate">내 위치로 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
+    '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요</p>' +
+    '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
+    '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름으로 찾기" value="' + esc(state.q) + '" aria-label="기관 이름으로 찾기">' +
-    '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
-    '<div class="meta"><span>' + list.length.toLocaleString() + '곳</span><span>' + (state.loadErr ? '데이터를 불러오지 못했어요' : esc(state.dataNote)) + '</span></div>' +
+    '<div class="filters" role="group" aria-label="시간 조건">' + chips + '</div>' +
+    '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' : list.length.toLocaleString() + '곳') + '</p>' +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<p class="empty">' + hint + '</p>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
-    '<p class="caution">진료시간은 공공데이터 기준이라 실제와 다를 수 있어요. 공휴일 휴진은 반영되지 않았어요. 가기 전에 전화로 확인해 주세요.</p>' +
+    '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있고, 공휴일은 반영되지 않았어요. 시간이 안 적힌 곳은 가기 전에 전화로 확인해 주세요.</p>' +
     footHTML();
 }
+function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g, '').trim().split(/\s+/); return t.slice(1, 5).join(' '); }
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
-    '<span>기관 정보: 건강보험심사평가원 병원정보서비스, 전국건강증진센터표준데이터(각 지자체) · 일부 좌표: TMAP</span>' +
+    '<span>기관 정보: 건강보험심사평가원 병원정보서비스, 전국건강증진센터표준데이터(각 지자체). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
     '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요.</span></div>';
 }
 function detailHTML(f, n) {
@@ -186,26 +195,27 @@ function detailHTML(f, n) {
   if (f.h) {
     ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].forEach(function (d) {
       var h = f.h[d], today = DAYS[n[0]] === d;
-      rows += '<div' + (today ? ' class="today"' : '') + '><span>' + DAYKO[d] + '요일' + (today ? ' · 오늘' : '') + '</span><span>' + (h ? h[0] + ' – ' + h[1] : '쉬는 날') + '</span></div>';
+      rows += '<div' + (today ? ' class="today"' : '') + '><span>' + DAYKO[d] + '요일' + (today ? ' (오늘)' : '') + '</span><span>' + (h ? h[0] + ' – ' + h[1] : '쉬는 날') + '</span></div>';
     });
     if (f.h.lunch) rows += '<div><span>평일 점심</span><span>' + f.h.lunch[0] + ' – ' + f.h.lunch[1] + '</span></div>';
     if (f.h.lunchSat) rows += '<div><span>토요일 점심</span><span>' + f.h.lunchSat[0] + ' – ' + f.h.lunchSat[1] + '</span></div>';
     if (f.h.holOff) rows += '<div><span>공휴일</span><span>쉬는 날</span></div>';
     if (f.h.note) rows += '<div><span>접수 안내</span><span>' + esc(f.h.note) + '</span></div>';
-  } else rows = '<div><span>운영시간</span><span>정보 없음 · 전화로 확인해 주세요</span></div>';
+  } else rows = '<div><span>운영시간</span><span>아직 정보가 없어요. 전화로 확인해 주세요</span></div>';
   var tel = String(f.tel || '').replace(/[^0-9]/g, '');
   var kakao = 'https://map.kakao.com/link/to/' + encodeURIComponent(f.n) + ',' + f.lat + ',' + f.lng;
   var naver = 'https://map.naver.com/p/search/' + encodeURIComponent(f.n);
   var web = f.web ? (/^https?:\/\//.test(f.web) ? f.web : 'http://' + f.web) : '';
-  return '<div class="detail"><button class="back" id="back">← 목록으로</button>' +
-    '<div><span class="kind">' + esc(kindLabel(f)) + ' · ' + fmtDist(f._d) + '</span><h2>' + esc(f.n) + '</h2></div>' +
-    '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>' +
+  return '<div class="detail"><button class="textbtn back" id="back">‹ 목록으로</button>' +
+    '<div><p class="kind">' + esc(kindLabel(f)) + ', ' + fmtDist(f._d) + '</p><h2>' + esc(f.n) + '</h2></div>' +
+    (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') +
     '<div class="actions">' + (tel ? '<a class="call" href="tel:' + tel + '">전화하기 ' + esc(f.tel) + '</a>' : '') +
-      '<a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div>' +
+      '<div class="pair"><a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div></div>' +
+    (tel ? '<p class="note">전화가 부담스러우면 이렇게만 말해도 돼요. "처음인데요, 상담 예약하고 싶어요."</p>' : '') +
     '<div class="rows">' + rows + '</div>' +
-    '<div class="rows"><div><span>주소</span><span>' + esc(f.a) + '</span></div>' +
+    '<div class="rows"><div><span>주소</span><span>' + esc(f.a) + ' <button class="textbtn" id="copy" data-copy="' + esc(f.a) + '">복사</button></span></div>' +
       (web ? '<div><span>홈페이지</span><span><a href="' + esc(web) + '" target="_blank" rel="noopener nofollow">열기</a></span></div>' : '') +
-      '<div><span>정보 출처</span><span>' + esc(f.src) + (f.d ? ' · ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
+      '<div><span>정보 출처</span><span>' + esc(f.src) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
     '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 전화로 확인해 주세요.</p></div>';
 }
 
@@ -220,14 +230,14 @@ function useMyLocation() {
     alert('위치를 가져오지 못했어요. 위치 권한을 허용하거나, 지역을 골라 주세요.');
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
 }
-function afterOrigin() { state.sel = null; state.shown = CFG.LIST_STEP || 30; setDistances(); renderPanel(); drawMap(true); }
+function afterOrigin(fit) { $('research').hidden = true; state.sel = null; state.shown = CFG.LIST_STEP || 30; setDistances(); renderPanel(); drawMap(fit !== false); }
 
 /* ───────── 자가검진 (문항은 공식 한국어판 확인 전 임시 문구) ───────── */
 var OPT = ['전혀 없었어요', '며칠 정도', '절반 넘는 날', '거의 매일'];
 var TESTS = {
-  phq: { name: '우울 살펴보기 (PHQ-9)', sub: '9문항 · 2분쯤', q: ['일이나 여가에서 흥미나 즐거움을 거의 느끼지 못했다', '기분이 가라앉거나 우울하거나 희망이 없다고 느꼈다', '잠들기 어렵거나 자주 깼다. 또는 너무 많이 잤다', '피곤하거나 기운이 거의 없었다', '입맛이 없거나 지나치게 많이 먹었다', '내가 실패자 같거나, 나와 가족을 실망시켰다고 느꼈다', '글을 읽거나 TV를 볼 때 집중하기 어려웠다', '남들이 알아챌 만큼 움직임이나 말이 느려졌다. 또는 반대로 안절부절못했다', '차라리 죽는 편이 낫겠다거나 스스로를 해치고 싶다는 생각이 들었다'],
+  phq: { name: '우울 살펴보기', sub: 'PHQ-9, 9문항, 2분쯤', q: ['일이나 여가에서 흥미나 즐거움을 거의 느끼지 못했다', '기분이 가라앉거나 우울하거나 희망이 없다고 느꼈다', '잠들기 어렵거나 자주 깼다. 또는 너무 많이 잤다', '피곤하거나 기운이 거의 없었다', '입맛이 없거나 지나치게 많이 먹었다', '내가 실패자 같거나, 나와 가족을 실망시켰다고 느꼈다', '글을 읽거나 TV를 볼 때 집중하기 어려웠다', '남들이 알아챌 만큼 움직임이나 말이 느려졌다. 또는 반대로 안절부절못했다', '차라리 죽는 편이 낫겠다거나 스스로를 해치고 싶다는 생각이 들었다'],
     bands: [[0, '우울 증상이 거의 없는 범위예요'], [5, '가벼운 우울 증상 범위예요'], [10, '중간 정도의 우울 증상 범위예요'], [15, '우울 증상이 꽤 있는 범위예요'], [20, '우울 증상이 많은 범위예요']] },
-  gad: { name: '불안 살펴보기 (GAD-7)', sub: '7문항 · 2분쯤', q: ['초조하거나 불안하거나 조마조마했다', '걱정을 멈추거나 조절하기 어려웠다', '여러 가지 일을 지나치게 걱정했다', '편하게 쉬기 어려웠다', '안절부절못해서 가만히 있기 힘들었다', '쉽게 짜증이 나거나 화가 났다', '끔찍한 일이 생길 것 같아 두려웠다'],
+  gad: { name: '불안 살펴보기', sub: 'GAD-7, 7문항, 2분쯤', q: ['초조하거나 불안하거나 조마조마했다', '걱정을 멈추거나 조절하기 어려웠다', '여러 가지 일을 지나치게 걱정했다', '편하게 쉬기 어려웠다', '안절부절못해서 가만히 있기 힘들었다', '쉽게 짜증이 나거나 화가 났다', '끔찍한 일이 생길 것 같아 두려웠다'],
     bands: [[0, '불안 증상이 거의 없는 범위예요'], [5, '가벼운 불안 증상 범위예요'], [10, '중간 정도의 불안 증상 범위예요'], [15, '불안 증상이 많은 범위예요']] }
 };
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
@@ -244,18 +254,18 @@ function renderCheck() {
   if (z.ans.length < t.q.length) {
     var i = z.ans.length;
     el.innerHTML = '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + t.q.length + '" aria-valuenow="' + i + '"><i style="width:' + (i / t.q.length * 100) + '%"></i></div>' +
-      '<p class="lead">' + (i + 1) + ' / ' + t.q.length + ' · 지난 2주 동안 얼마나 자주 그랬나요</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
+      '<p class="lead">' + t.q.length + '개 중 ' + (i + 1) + '번째. 지난 2주 동안 얼마나 자주 그랬나요?</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
       '<div class="opts">' + OPT.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
-      '<button class="ghost" id="quit">' + (i ? '이전 문항으로' : '그만두기') + '</button>';
+      '<button class="textbtn" id="quit">' + (i ? '‹ 이전 문항으로' : '그만두기') + '</button>';
     var q = $('qtext'); if (q) q.focus();
     return;
   }
   var score = z.ans.reduce(function (a, b) { return a + b; }, 0), max = t.q.length * 3, risk = z.test === 'phq' && z.ans[8] > 0;
   el.innerHTML = (risk ? '<div class="help"><p>스스로를 해치고 싶은 생각이 들었다고 답해 주셨어요. 혼자 견디지 않아도 돼요. 지금 전화하면 24시간 이야기할 수 있어요.</p><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a></div>' : '') +
-    '<div class="score"><span class="num">' + t.name + ' · ' + score + '점 / ' + max + '점</span><strong>' + band(t, score) + '</strong>' +
+    '<div class="score"><span class="num">' + t.name + ', ' + max + '점 중 ' + score + '점</span><strong>' + band(t, score) + '</strong>' +
     '<p>' + (score >= 10 || risk ? '전문가와 이야기해 보면 도움이 될 수 있어요. 가까운 곳부터 천천히 살펴봐요.' : '지금 답한 내용으로는 증상이 많지 않아요. 그래도 힘들다고 느끼면 그 느낌이 먼저예요.') + '</p></div>' +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
-    '<button class="primary" id="tomap">가까운 기관 보기</button><button class="ghost" id="tofree">무료 공공 상담기관만 보기</button><button class="ghost" id="again">처음으로</button>';
+    '<button class="primary" id="tomap">가까운 기관 보기</button><button class="ghost" id="tofree">무료 공공 상담기관만 보기</button><button class="textbtn" id="again">다른 검진 해 보기</button>';
 }
 
 /* ───────── 마음 통계 ───────── */
@@ -268,10 +278,10 @@ function renderFacts() {
   var up = function (a) { return Math.round((a[last] / a[0] - 1) * 100); };
   var tile = function (x) { return '<div class="tile"><strong>' + esc(x.v) + '</strong><span class="l">' + esc(x.l) + '</span><span class="s">' + esc(x.s) + '</span><span class="src">' + esc(x.src) + '</span></div>'; };
   el.innerHTML =
-    '<div class="fsec"><p class="eyebrow">마음 통계</p><h2>우울과 불안은 생각보다 가까이 있어요</h2>' +
+    '<div class="fsec"><h2>우울과 불안은 생각보다 가까이 있어요</h2>' +
       '<p class="lead">누구에게나 찾아올 수 있을 만큼 흔하지만, 저절로 지나가길 기다리기보다 전문가와 함께 살펴보면 좋은 일이에요. 숫자로 먼저 살펴볼게요.</p></div>' +
 
-    '<div class="fsec"><p class="eyebrow">1 · 흔한 일이에요</p><h2>우울·불안으로 병원을 찾는 사람이 11년 새 크게 늘었어요</h2>' +
+    '<div class="fsec"><h2>우울·불안으로 병원을 찾는 사람이 11년 새 크게 늘었어요</h2>' +
       '<div class="fig" id="fig-trend"><h3>우울·불안 관련 진료 인원 (' + T.years[0] + '–' + T.years[last] + ')</h3>' +
         '<div class="lgd"><span><i style="background:var(--s1)"></i>기분장애(우울·조울) +' + up(T.mood) + '%</span><span><i style="background:var(--s2)"></i>불안·스트레스 관련 장애 +' + up(T.anx) + '%</span></div>' +
         '<svg class="chart" id="c-trend" role="img" aria-label="연도별 진료 인원 선 그래프"></svg><div class="tip" id="tip-trend"></div>' +
@@ -279,18 +289,18 @@ function renderFacts() {
         tableHTML(['연도', '기분장애', '불안·스트레스'], T.years.map(function (y, i) { return [y, T.mood[i].toLocaleString() + '명', T.anx[i].toLocaleString() + '명']; })) + '</div>' +
       '<div class="callout"><p>"마음의 감기"라는 말은 그만큼 흔하다는 뜻이에요. 며칠 쉬면 저절로 낫는다는 뜻은 아니에요. 일찍 상담하고 필요한 치료를 받는 게 도움이 돼요.</p></div></div>' +
 
-    '<div class="fsec"><p class="eyebrow">2 · 내 주변의 이야기</p><h2>성인 5명 중 1명은 일상에서 스트레스를 많이 느껴요</h2>' +
+    '<div class="fsec"><h2>성인 5명 중 1명은 일상에서 스트레스를 많이 느껴요</h2>' +
       '<div class="tiles">' + S.tiles.around.map(tile).join('') + '</div>' +
       '<div class="fig" id="fig-sido"><h3>시·도별 우울증상 유병률 (2025)</h3><p class="sub">우울증 선별도구(PHQ-9) 10점 이상인 성인 비율</p>' +
         '<svg class="chart" id="c-sido" role="img" aria-label="시도별 우울증상 유병률 막대 그래프"></svg><div class="tip" id="tip-sido"></div>' +
         '<p class="sub">' + esc(S.sido.note) + '</p><p class="src">출처: ' + esc(S.sido.src) + '</p>' +
         tableHTML(S.sido.cols, S.sido.rows.slice().sort(function (a, b) { return b[1] - a[1]; })) + '</div></div>' +
 
-    '<div class="fsec"><p class="eyebrow">3 · 혼자 참지 않아도 돼요</p><h2>많은 사람이 이미 도움을 청하고 있어요</h2>' +
+    '<div class="fsec"><h2>많은 사람이 이미 도움을 청하고 있어요</h2>' +
       '<div class="tiles">' + S.tiles.help.map(tile).join('') + '</div>' +
-      '<div class="callout"><p>지금 이야기할 곳이 필요하다면</p><div class="actions"><a class="call" href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a><a href="tel:1388">1388 청소년 상담</a></div></div></div>' +
+      '<div class="callout"><p>지금 이야기할 곳이 필요하다면</p><div class="actions"><a class="call" href="tel:109">109 자살예방 상담전화</a><div class="pair"><a href="tel:15770199">1577-0199 위기상담</a><a href="tel:1388">1388 청소년 상담</a></div></div></div></div>' +
 
-    '<div class="fsec"><p class="eyebrow">4 · 문턱 낮추기</p><h2>가까운 무료 상담기관, 몰라서 못 가는 경우가 많아요</h2>' +
+    '<div class="fsec"><h2>가까운 무료 상담기관, 몰라서 못 가는 경우가 많아요</h2>' +
       '<div class="tiles">' + tile(S.tiles.door) + '</div>' +
       '<p class="lead">정신건강복지센터 같은 공공기관에서는 비용 부담 없이 상담을 시작할 수 있어요.</p>' +
       '<button class="primary" id="factsfree">가까운 무료 공공 상담기관 보기</button></div>' +
@@ -379,8 +389,23 @@ function barChart() {
   });
 }
 
+/* ───────── 숨 고르기: 4초 들이쉬고 6초 내쉬기를 세 번 ───────── */
+var breathT = [];
+function breathe() {
+  var box = $('breathbox'), lung = $('lung'), txt = $('breathtext'), btn = $('breathbtn');
+  breathT.forEach(clearTimeout); breathT = [];
+  if (btn.getAttribute('aria-expanded') === 'true') { box.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.textContent = '30초 숨 고르기'; lung.className = 'lung'; return; }
+  box.hidden = false; btn.setAttribute('aria-expanded', 'true'); btn.textContent = '그만하기';
+  var t = 100;
+  for (var i = 0; i < 3; i++) {
+    breathT.push(setTimeout(function () { lung.className = 'lung in'; txt.textContent = '코로 천천히 들이쉬어요'; }, t)); t += 4000;
+    breathT.push(setTimeout(function () { lung.className = 'lung out'; txt.textContent = '입으로 길게 내쉬어요'; }, t)); t += 6000;
+  }
+  breathT.push(setTimeout(function () { txt.textContent = '잘했어요. 필요하면 한 번 더 해도 돼요.'; btn.textContent = '닫기'; }, t));
+}
+
 /* ───────── 화면 전환 ───────── */
-var VIEWS = ['map', 'check', 'facts', 'guide'];
+var VIEWS = ['home', 'map', 'check', 'facts', 'guide'];
 function go(v) {
   state.view = v;
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
@@ -393,12 +418,16 @@ function go(v) {
   }
   try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
 }
-function showFreeOnMap() { state.sel = null; state.filters = { open: false, night: false, sat: false, free: true }; go('map'); drawMap(true); }
+function showFreeOnMap() { state.sel = null; state.kind = 'free'; state.filters = { open: false, night: false, sat: false }; go('map'); drawMap(true); }
 
 document.addEventListener('click', function (e) {
   var b = e.target.closest('button, a[data-go]'); if (!b) return;
   if (b.dataset.go) { e.preventDefault(); return go(b.dataset.go); }
   if (b.dataset.id) return select(b.dataset.id);
+  if (b.dataset.kind) { state.kind = b.dataset.kind; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
+  if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; return afterOrigin(false); }
+  if (b.id === 'copy') { var t = b.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { b.textContent = '복사했어요'; }); return; }
+  if (b.id === 'breathbtn') return breathe();
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
   if (b.id === 'back') { state.sel = null; renderPanel(); return drawMap(false); }
   if (b.id === 'more') { state.shown += CFG.LIST_STEP || 30; renderPanel(); return drawMap(false); }
@@ -432,7 +461,7 @@ function renderPanelKeepFocus() { if (document.activeElement && document.activeE
 
 (function start() {
   var v = location.hash.slice(1);
-  go(VIEWS.indexOf(v) >= 0 ? v : 'map');
+  go(VIEWS.indexOf(v) >= 0 ? v : 'home');
   loadKakao();
   loadData().then(function () { if (state.view === 'map') renderPanel(); drawMap(true); });
 })();
