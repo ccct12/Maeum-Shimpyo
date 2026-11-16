@@ -239,7 +239,7 @@ function hit_(ev) {
     var lock = LockService.getScriptLock();
     if (lock.tryLock(3000)) {
       try {
-        var sh = SpreadsheetApp.getActive().getSheetByName('방문자');
+        var sh = SpreadsheetApp.getActive().getSheetByName('방문_기록');
         if (sh) {
           var head = sh.getRange(1, 1, 1, 11).getValues()[0], c = head.indexOf(name), cv = head.indexOf('화면 보기');
           var today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
