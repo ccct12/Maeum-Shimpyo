@@ -2,11 +2,11 @@
 window.MAEUM_CONFIG = {
   // 카카오 디벨로퍼스 > 내 애플리케이션 > 앱 키 > JavaScript 키
   // (등록한 도메인에서만 동작하는 공개용 키라 여기에 적어도 됩니다)
-  KAKAO_JS_KEY: '',
+  KAKAO_JS_KEY: '44a29de77936df25294747a2f03e126a',
 
   // 구글 시트 Apps Script 웹 앱 주소 (배포 > 웹 앱 > .../exec)
   // 비워 두면 저장소의 data/facilities-fallback.json(공공데이터 좌표만)을 씁니다.
-  DATA_URL: '',
+  DATA_URL: 'https://script.google.com/macros/s/AKfycbyRqwt4QD-UKNwBweXrrpHUDTmRVIRnhbeJm5XyNG9zVjfQq3yzyYhhKpRjEnjnrqia1A/exec',
 
   FALLBACK_URL: 'data/facilities-fallback.json',
   STATS_URL: 'data/stats.json',
