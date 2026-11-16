@@ -32,7 +32,9 @@ var CFG = {
 
 /* ───────── 1. 시트 메뉴 ───────── */
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('마음쉼표')
+  var ui = SpreadsheetApp.getUi();
+  if (typeof addReviewMenu_ === 'function') addReviewMenu_(ui);   // Review.gs의 검수 도우미 메뉴
+  ui.createMenu('마음쉼표')
     .addItem('① 티맵 키 저장', 'setTmapKey')
     .addItem('② 좌표 비어 있는 행 채우기 (티맵)', 'fillCoords')
     .addItem('③ 매일 자동 갱신 켜기', 'installDailyTrigger')
