@@ -32,11 +32,21 @@ function loadData() {
   var primary = CFG.DATA_URL ? getJSON(CFG.DATA_URL + (CFG.DATA_URL.indexOf('?') < 0 ? '?' : '&') + 'type=facilities') : Promise.reject('no url');
   return primary.catch(function () { return getJSON(CFG.FALLBACK_URL); })
     .then(function (j) {
-      state.data = (j.items || []).filter(function (f) { return isFinite(f.lat) && isFinite(f.lng); });
+      state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
       state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
       setDistances();
     })
     .catch(function () { state.loadErr = true; state.data = []; });
+}
+
+// 예전 Apps Script(한글 열 이름 그대로)로 배포돼 있어도 읽을 수 있게 맞춘다
+var SRC_SHORT = { '건강보험심사평가원_병원정보서비스': '건강보험심사평가원', '전국건강증진센터표준데이터': '지자체 공공데이터' };
+function normalize(f) {
+  if (!f || f.id) return f;
+  if (f['노출'] !== undefined && String(f['노출']).toUpperCase() !== 'TRUE') return null;
+  return { id: f['기관ID'], c: f['부류'] === '의료' ? 'm' : 'p', t: f['기관구분'], n: f['기관명'], a: f['도로명주소'],
+    lat: parseFloat(f['위도']), lng: parseFloat(f['경도']), tel: f['전화'] || '', web: f['홈페이지'] || '', cost: f['비용구분'] || '',
+    src: SRC_SHORT[f['출처']] || f['출처'] || '', d: String(f['데이터기준일'] || '').slice(0, 10) };
 }
 
 /* ───────── 시간·상태 (한국 시간) ───────── */
