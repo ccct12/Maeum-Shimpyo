@@ -143,6 +143,7 @@ function checkCoords() {
  * 응답이 커서 90KB씩 나눠 1시간 캐시한다. 좌표 갱신(fillCoords) 때 캐시를 비운다.
  */
 function doGet(e) {
+  if (e && e.parameter.type === 'hit') return hit_(e.parameter.e);
   var type = (e && e.parameter.type) === 'stats' ? 'stats' : 'facilities';
   var body = cacheGet_(type);
   if (!body) {
@@ -223,6 +224,39 @@ function cacheGet_(key) {
   return parts.join('');
 }
 function clearWebCache() { CacheService.getScriptCache().removeAll(['facilities_n', 'stats_n']); }
+
+/* ───────── 방문자 집계 ─────────
+ * 사이트가 ?type=hit&e=<이벤트> 로 부른다. 날짜별 횟수만 센다.
+ * IP·기기 정보·위치·자가검진 응답은 받지도 저장하지도 않는다.
+ */
+var HIT_COL = {
+  visit: '방문', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
+  'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
+};
+function hit_(ev) {
+  var name = HIT_COL[ev];
+  if (name) {
+    var lock = LockService.getScriptLock();
+    if (lock.tryLock(3000)) {
+      try {
+        var sh = SpreadsheetApp.getActive().getSheetByName('방문자');
+        if (sh) {
+          var head = sh.getRange(1, 1, 1, 11).getValues()[0], c = head.indexOf(name), cv = head.indexOf('화면 보기');
+          var today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+          var dates = sh.getRange('A2:A').getDisplayValues().map(function (r) { return r[0]; });
+          var row = dates.indexOf(today) + 2;
+          if (row < 2) {
+            row = dates.indexOf('') + 2; if (row < 2) row = dates.length + 2;
+            sh.getRange(row, 1, 1, 11).setValues([[today, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]);
+          }
+          if (c >= 0) { var cell = sh.getRange(row, c + 1); cell.setValue((+cell.getValue() || 0) + 1); }
+          if (ev.indexOf('view:') === 0 && cv >= 0) { var v = sh.getRange(row, cv + 1); v.setValue((+v.getValue() || 0) + 1); }
+        }
+      } finally { lock.releaseLock(); }
+    }
+  }
+  return ContentService.createTextOutput('ok');
+}
 
 /* ───────── 도우미 ───────── */
 function sheet_(name) {

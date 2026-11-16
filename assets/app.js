@@ -189,7 +189,7 @@ function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
     '<span>기관 정보: 건강보험심사평가원 병원정보서비스, 전국건강증진센터표준데이터(각 지자체). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
-    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요.</span></div>';
+    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜별 횟수만 세요.</span></div>';
 }
 function detailHTML(f, n) {
   var s = status(f, n), rows = '';
@@ -405,9 +405,28 @@ function breathe() {
   breathT.push(setTimeout(function () { txt.textContent = '잘했어요. 필요하면 한 번 더 해도 돼요.'; btn.textContent = '닫기'; }, t));
 }
 
+/* ───────── 방문 집계: 날짜별 횟수만. 누가·어디서 왔는지는 보내지 않는다 ───────── */
+function hit(ev) {
+  if (!CFG.DATA_URL || /^(localhost|127\.)/.test(location.hostname)) return;
+  try { fetch(CFG.DATA_URL + '?type=hit&e=' + encodeURIComponent(ev), { mode: 'no-cors', keepalive: true }); } catch (e) {}
+}
+function hitVisit() {
+  var d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), k = 'ms_day';
+  try { if (localStorage.getItem(k) === d) return; localStorage.setItem(k, d); } catch (e) {}
+  hit('visit');
+}
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('a[href]'); if (!a) return;
+  var h = a.getAttribute('href');
+  if (/^tel:(109|15770199|1388)$/.test(h)) hit('crisis');
+  else if (h.indexOf('tel:') === 0) hit('tel');
+  else if (/map\.kakao\.com\/link\/to|map\.naver\.com/.test(h)) hit('route');
+}, true);
+
 /* ───────── 화면 전환 ───────── */
 var VIEWS = ['home', 'map', 'check', 'facts', 'guide'];
 function go(v) {
+  if (state.view !== v || !go.done) hit('view:' + v); go.done = true;
   state.view = v;
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
   document.querySelectorAll('[data-go]').forEach(function (b) { if (b.tagName === 'BUTTON') { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); } });
@@ -463,6 +482,7 @@ function renderPanelKeepFocus() { if (document.activeElement && document.activeE
 (function start() {
   var v = location.hash.slice(1);
   go(VIEWS.indexOf(v) >= 0 ? v : 'home');
+  hitVisit();
   loadKakao();
   loadData().then(function () { if (state.view === 'map') renderPanel(); drawMap(true); });
 })();
