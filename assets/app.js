@@ -524,14 +524,14 @@ function restSafe(k) {
   return '<ul class="safe">' + (k !== 'words' && k !== 'ground' ? '<li>어지럽거나 더 불편해지면 바로 멈추고 평소처럼 숨 쉬세요.</li>' : '') +
     '<li>눈은 떠도 괜찮아요. 언제든 그만둬도 돼요.</li><li>마음을 잠깐 가라앉히는 방법이에요. 치료를 대신하지는 않아요.</li></ul>';
 }
-function restHead(z) { return '<button class="textbtn" id="restmenu">‹ 다른 방법 고르기</button><h2>' + REST[z.k].t + '</h2>'; }
+function restHead(z) { return '<button class="textbtn" id="restmenu">‹ 다른 방법 고르기</button><h2>' + REST[z.k].t + '</h2>' + soundHTML(); }
 function renderRest() {
   var el = $('restbox'), z = state.rest;
   stopRest();
   if (!z) {
     el.innerHTML = '<h2>잠깐 마음 쉬기</h2><p class="lead">지금 맞을 것 같은 것 하나만 골라 보세요. 숨에 집중하는 게 불편하면 다른 방법도 있어요.</p>' +
       '<div class="pick">' + Object.keys(REST).map(function (k) { return '<button data-rest="' + k + '"><b>' + REST[k].t + '</b><small>' + REST[k].s + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
-      '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요.</p>' + restSafe();
+      soundHTML() + '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 배경 소리는 기본으로 꺼져 있어요.</p>' + restSafe();
     return;
   }
   if (z.feel) return renderFeel(el, z);
@@ -607,6 +607,59 @@ function renderRest() {
       '<button class="textbtn" id="reststop">이제 그만 볼래요</button>' + restSafe(k);
   }
 }
+/* 배경 소리: 파일 없이 이 기기에서 만든 잡음(빗소리·바람). 기본은 끔, 원할 때만 켠다. */
+var SND = { ctx: null, kind: 'off', nodes: [], out: null };
+function noise(ctx, brown) {
+  var n = ctx.sampleRate * 4, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0), last = 0;
+  for (var i = 0; i < n; i++) { var w = Math.random() * 2 - 1; if (brown) { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
+  var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; return src;
+}
+function stopSound(fast) {
+  var c = SND.ctx, nodes = SND.nodes, out = SND.out;
+  SND.kind = 'off'; SND.nodes = []; SND.out = null;
+  if (!c || !out) return;
+  var t = c.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value, t); out.gain.linearRampToValueAtTime(0, t + (fast ? 0.05 : 0.8));
+  setTimeout(function () { nodes.forEach(function (n) { try { n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} }); }, fast ? 100 : 900);
+}
+function startSound(kind) {
+  stopSound(true);
+  if (kind === 'off') return;
+  var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  var c = SND.ctx || (SND.ctx = new AC()); if (c.resume) c.resume();
+  var out = c.createGain(); out.gain.value = 0; out.connect(c.destination);
+  var nodes = [], t = c.currentTime;
+  if (kind === 'rain') {
+    var r = noise(c, false), hp = c.createBiquadFilter(), lp = c.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 400; lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = 0.4;
+    r.connect(hp); hp.connect(lp); lp.connect(out); r.start(); nodes.push(r);
+    out.gain.linearRampToValueAtTime(0.09, t + 2.5);
+  } else {
+    var w = noise(c, true), bp = c.createBiquadFilter(), lfo = c.createOscillator(), depth = c.createGain(), amp = c.createGain(), lfo2 = c.createOscillator(), d2 = c.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = 380; bp.Q.value = 0.7;
+    lfo.frequency.value = 0.07; depth.gain.value = 180; lfo.connect(depth); depth.connect(bp.frequency);
+    amp.gain.value = 1; lfo2.frequency.value = 0.045; d2.gain.value = 0.35; lfo2.connect(d2); d2.connect(amp.gain);
+    w.connect(bp); bp.connect(amp); amp.connect(out); w.start(); lfo.start(); lfo2.start(); nodes.push(w, lfo, lfo2);
+    out.gain.linearRampToValueAtTime(0.22, t + 3);
+  }
+  SND.kind = kind; SND.nodes = nodes; SND.out = out;
+}
+function soundHTML() {
+  if (!(window.AudioContext || window.webkitAudioContext)) return '';
+  return '<div class="sound" role="group" aria-label="배경 소리"><span>배경 소리</span>' +
+    [['off', '끔'], ['rain', '빗소리'], ['wind', '바람']].map(function (x) { return '<button data-snd="' + x[0] + '" aria-pressed="' + (SND.kind === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+}
+document.addEventListener('visibilitychange', function () { if (document.hidden && SND.kind !== 'off') { stopSound(true); var g = document.querySelectorAll('[data-snd]'); g.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.snd === 'off'); }); } });
+
+/* 처음 화면의 작은 새싹: 누를 때만 살짝 흔들리고 짧은 문장을 보여 준다. 저절로 움직이지 않는다. */
+var SPROUT = ['천천히 와도 괜찮아요.', '여기 잠깐 머물러도 돼요.', '오늘도 여기까지 왔네요.', '숨 한 번, 길게 내쉬어 볼까요.', '서두르지 않아도 돼요.'];
+var sproutN = 0, sproutT;
+function petSprout() {
+  var b = $('sprout'), say = $('sproutsay');
+  b.classList.remove('sway'); void b.offsetWidth; b.classList.add('sway');
+  say.innerHTML = esc(SPROUT[sproutN++ % SPROUT.length]) + ' <button class="textbtn" data-go="rest">잠깐 쉬어 가기 ›</button>';
+  say.hidden = false; clearTimeout(sproutT); sproutT = setTimeout(function () { say.hidden = true; }, 8000);
+}
+
 function renderFeel(el, z) {
   var nx = REST_NEXT[z.k];
   if (z.feel === 'better') {
@@ -662,7 +715,7 @@ document.addEventListener('click', function (e) {
 var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide'];
 function go(v) {
   if (state.view !== v || !go.done) hit('view:' + v); go.done = true;
-  if (state.view === 'rest' && v !== 'rest') { stopRest(); state.rest = null; }
+  if (state.view === 'rest' && v !== 'rest') { stopRest(); stopSound(); state.rest = null; }
   state.view = v;
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
   document.querySelectorAll('[data-go]').forEach(function (b) { if (b.tagName === 'BUTTON') { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); } });
@@ -701,6 +754,8 @@ document.addEventListener('click', function (e) {
   if (b.id === 'tofacts') return go('facts');
   if (b.id === 'toguide') return go('guide');
   if (b.id === 'tobreath') { go('rest'); return; }
+  if (b.id === 'sprout') return petSprout();
+  if (b.dataset.snd) { startSound(b.dataset.snd); document.querySelectorAll('[data-snd]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.snd === SND.kind); }); return; }
   // 마음 쉬기
   var rz = state.rest, restDraw = function () { renderRest(); var r = $('restbox'); var f = r && r.querySelector('h2'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); } $('v-rest').scrollTop = 0; };
   if (b.dataset.rest) { if (state.view !== 'rest') go('rest'); state.rest = { k: b.dataset.rest }; return restDraw(); }
