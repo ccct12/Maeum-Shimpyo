@@ -326,3 +326,21 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
   .crisis{font-size:13px;gap:2px 12px}
   .rest .phrase p{font-size:22px}
 }
+
+/* 마우스를 올렸을 때 반응 (마우스가 있는 기기에서만. 터치 기기에서 눌린 채로 남지 않게) */
+.nav button,.actions a,.actions button,.sound button,.chip,.seg button,.ghost,.btn,.primary,.tabs button,.research,.mapsize,.crisis a,.help a,.feel button,.textbtn,.sprout{transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,filter .15s}
+@media (hover:hover){
+  .nav button:not([aria-current="page"]):hover{background:var(--off-soft);color:var(--ink)}
+  .actions a:not(.call):hover,.actions button:hover{border-color:var(--green);background:color-mix(in srgb,var(--green) 14%,var(--surface))}
+  .actions a.call:hover,.primary:hover,.btn.solid:hover{filter:brightness(1.08);box-shadow:0 2px 10px rgba(20,30,26,.18)}
+  .ghost:not(:disabled):hover,.btn:not(.solid):hover{border-color:var(--green);background:color-mix(in srgb,var(--green) 14%,var(--surface))}
+  .sound button:not([aria-pressed="true"]):hover,.chip:not([aria-pressed="true"]):hover{border-color:var(--green);color:var(--ink);background:color-mix(in srgb,var(--green) 14%,var(--surface))}
+  .seg button:not([aria-pressed="true"]):hover{color:var(--ink);background:rgba(127,140,133,.12)}
+  .tabs button:not([aria-current="page"]):hover{color:var(--ink)}
+  .textbtn:hover{text-decoration-color:var(--apricot)}
+  .crisis a:hover,.help a:hover{border-bottom-width:3px;color:#fff}
+  .research:hover{filter:brightness(1.25)}
+  .mapsize:hover{background:#E8EFEA}
+  .sprout:hover{background:rgba(127,140,133,.10)}
+  .where select:hover,.search:hover{border-color:var(--green)}
+}
