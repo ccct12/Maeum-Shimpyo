@@ -128,20 +128,27 @@ function loadKakao() {
   document.head.appendChild(s);
 }
 function mapMsg() { K.failed = true; $('v-map').classList.add('nomap'); }
-function initMap() {
+// 지도는 화면에 보일 때 만든다. 숨겨진 상태(크기 0)에서 만들면 범위 계산이 틀어져 전국 지도나 빈 화면이 뜬다.
+function mapVisible() { var el = $('kmap'); return el.offsetWidth > 50 && el.offsetHeight > 50; }
+function initMap() { K.ready = true; if (mapVisible()) createMap(); }
+function createMap() {
   var km = window.kakao.maps;
-  K.map = new km.Map($('kmap'), { center: new km.LatLng(state.origin.lat, state.origin.lng), level: 6 });
+  K.map = new km.Map($('kmap'), { center: new km.LatLng(state.origin.lat, state.origin.lng), level: 5 });
   K.map.addControl(new km.ZoomControl(), km.ControlPosition.RIGHT);
   $('kmap').removeAttribute('aria-hidden');
   km.event.addListener(K.map, 'dragend', function () { $('research').hidden = false; });
   drawMap(true);
 }
 function drawMap(fit) {
-  if (!K.map) return;
+  if (!K.map) {
+    if (K.ready && mapVisible()) return createMap();
+    if (fit) K.needFit = true;
+    return;
+  }
   var km = window.kakao.maps, n = now();
+  var list = visible().slice(0, state.shown);
   K.pins.forEach(function (o) { o.setMap(null); });
   K.pins = [];
-  var list = visible().slice(0, state.shown);
   list.forEach(function (f, i) {
     var sel = state.sel === f.id, b = document.createElement('button');
     b.className = 'pin ' + f.c + (sel ? ' sel' : '');
@@ -155,11 +162,16 @@ function drawMap(fit) {
   var me = document.createElement('div'); me.className = 'me'; me.title = state.origin.label;
   K.me = new km.CustomOverlay({ position: new km.LatLng(state.origin.lat, state.origin.lng), content: me, zIndex: 4 });
   K.me.setMap(K.map);
-  if (fit) {
+  if (fit || K.needFit) {
+    if (!mapVisible()) { K.needFit = true; return; }
+    K.needFit = false;
+    // 가까운 곳 위주로 화면을 맞춘다: 가까운 3곳은 항상, 나머지는 15km 안쪽만
+    var pts = list.slice(0, 8).filter(function (f, i) { return i < 3 || f._d < 15000; });
+    if (!pts.length) { K.map.setCenter(new km.LatLng(state.origin.lat, state.origin.lng)); K.map.setLevel(6); return; }
     var bd = new km.LatLngBounds();
     bd.extend(new km.LatLng(state.origin.lat, state.origin.lng));
-    list.slice(0, 8).forEach(function (f) { bd.extend(new km.LatLng(f.lat, f.lng)); });
-    K.map.setBounds(bd, 40, 40, 40, 40);
+    pts.forEach(function (f) { bd.extend(new km.LatLng(f.lat, f.lng)); });
+    K.map.setBounds(bd, 48, 48, 48, 48);
   }
 }
 function relayout() { if (K.map) { K.map.relayout(); } }
@@ -264,18 +276,18 @@ function afterOrigin(fit) { $('research').hidden = true; state.sel = null; state
 // 문항·보기·질문 문장: PHQ-9, GAD-7 공식 한국어판(Korean for Korea) 원문 그대로.
 // Pfizer Inc.로부터 교육용 지원금을 받아 Robert L. Spitzer 박사, Janet B.W. Williams 박사, Kurt Kroenke 박사와 동료들에 의해 개발. 복제·번역·전시·배포에 허가가 필요하지 않음.
 var TESTS = {
-  phq: { name: '우울 살펴보기', sub: 'PHQ-9 · 9문항 · 1~2분쯤',
+  phq: { name: '우울 살펴보기', sub: 'PHQ-9 · 9문항 · 1~2분 소요',
     stem: '지난 2주일 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
     opt: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '7일 이상 방해 받았다', '거의 매일 방해 받았다'],
     q: ['일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', '기분이 가라앉거나, 우울하거나, 희망이 없음', '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', '피곤하다고 느끼거나 기운이 거의 없음', '입맛이 없거나 과식을 함', '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함'],
     bands: [[0, '우울 증상이 거의 없는 범위예요'], [5, '가벼운 우울 증상 범위예요'], [10, '중간 정도의 우울 증상 범위예요'], [15, '우울 증상이 꽤 있는 범위예요'], [20, '우울 증상이 많은 범위예요']] },
-  gad: { name: '불안 살펴보기', sub: 'GAD-7 · 7문항 · 1분쯤',
+  gad: { name: '불안 살펴보기', sub: 'GAD-7 · 7문항 · 1분 소요',
     stem: '지난 2주 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
     opt: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '2주 중 절반 이상 방해 받았다', '거의 매일 방해 받았다'],
     q: ['초조하거나 불안하거나 조마조마하게 느낀다', '걱정하는 것을 멈추거나 조절할 수가 없다', '여러 가지 것들에 대해 걱정을 너무 많이 한다', '편하게 있기가 어렵다', '너무 안절부절못해서 가만히 있기가 힘들다', '쉽게 짜증이 나거나 쉽게 성을 내게 된다', '마치 끔찍한 일이 생길 것처럼 두렵게 느껴진다'],
     bands: [[0, '불안 증상이 거의 없는 범위예요'], [5, '가벼운 불안 증상 범위예요'], [10, '중간 정도의 불안 증상 범위예요'], [15, '불안 증상이 많은 범위예요']] }
 };
-var TEST_SRC = '문항: PHQ-9·GAD-7 공식 한국어판. Pfizer Inc.의 교육용 지원금으로 Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke 박사와 동료들이 개발했으며, 복제·번역·전시·배포에 허가가 필요하지 않아요.';
+var TEST_SRC = '문항 출처: PHQ-9·GAD-7 공식 한국어판 (Pfizer Inc.)';
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
 function renderCheck() {
   var el = $('check'), z = state.quiz;
@@ -454,6 +466,21 @@ function breathe() {
   breathT.push(setTimeout(function () { txt.textContent = '잘했어요. 필요하면 한 번 더 해도 돼요.'; btn.textContent = '닫기'; }, t));
 }
 
+/* ───────── PC에서 전화 버튼: 바로 걸리지 않으니 번호를 복사하고 알려 준다 ───────── */
+var canCall = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+function toast(msg) {
+  var t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('on'); }, 4000);
+}
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('a[href^="tel:"]'); if (!a || canCall) return;
+  var num = a.getAttribute('href').slice(4), shown = (a.textContent.match(/[\d-]{3,}/) || [num])[0];
+  e.preventDefault();
+  var done = function () { toast(shown + ' 번호를 복사했어요. 휴대폰으로 걸어 주세요.'); };
+  if (navigator.clipboard) navigator.clipboard.writeText(shown).then(done, function () { toast('휴대폰으로 ' + shown + '에 걸어 주세요.'); });
+  else toast('휴대폰으로 ' + shown + '에 걸어 주세요.');
+});
+
 /* ───────── 방문 집계: 날짜별 횟수만. 누가·어디서 왔는지는 보내지 않는다 ───────── */
 function hit(ev) {
   if (!CFG.DATA_URL || /^(localhost|127\.)/.test(location.hostname)) return;
@@ -479,7 +506,10 @@ function go(v) {
   state.view = v;
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
   document.querySelectorAll('[data-go]').forEach(function (b) { if (b.tagName === 'BUTTON') { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); } });
-  if (v === 'map') { renderPanel(); setTimeout(relayout, 0); }
+  if (v === 'map') {
+    renderPanel();
+    setTimeout(function () { if (!K.map && K.ready) createMap(); else if (K.map) { K.map.relayout(); if (K.needFit) drawMap(true); } }, 30);
+  }
   if (v === 'check') renderCheck();
   if (v === 'facts') {
     if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('facts').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });

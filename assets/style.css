@@ -219,3 +219,7 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
   .actions>*{flex:1 1 auto}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}.lung{transform:scale(.85)!important}}
+
+.toast{position:fixed;left:50%;bottom:84px;transform:translate(-50%,12px);background:var(--band);color:var(--band-ink);padding:11px 16px;border-radius:12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:20;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (min-width:900px){.toast{bottom:32px}}
