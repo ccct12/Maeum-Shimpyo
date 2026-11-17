@@ -165,6 +165,9 @@ function doGet(e) {
 
 var SRC_SHORT = { '건강보험심사평가원_병원정보서비스': '건강보험심사평가원', '전국건강증진센터표준데이터': '지자체 공공데이터' };
 
+/* 이용자분류 → 짧은 키. 정신건강의학과 진료·상담·보건소는 기본 노출이라 키를 붙이지 않는다. */
+var GROUP_SHORT = { '요양·재활·생활시설': 'care', '일반 병의원·보건기관': 'gen', '진료과목 확인 필요': 'unk' };
+
 function facilities_() {
   var C = CFG.COL, hours = hours_(), out = [];
   table_(CFG.FAC_SHEET).forEach(function (r) {
@@ -179,6 +182,8 @@ function facilities_() {
       src: SRC_SHORT[r['출처']] || r['출처'] || '', d: String(r['데이터기준일'] || '').slice(0, 10)
     };
     if (hours[o.id]) o.h = hours[o.id];
+    var g = GROUP_SHORT[String(r['이용자분류'] || '').trim()];
+    if (g) o.g = g;                                                  // 기본 노출 외 그룹만 표시 (비어 있으면 기본)
     out.push(o);
   });
   return { asOf: new Date().toISOString(), count: out.length, items: out };

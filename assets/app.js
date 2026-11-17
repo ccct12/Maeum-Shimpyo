@@ -19,7 +19,7 @@ var SIDO = [
 
 var state = {
   view: 'home', sel: null, q: '', shown: CFG.LIST_STEP || 30, kind: 'all',
-  filters: { open: false, night: false, sat: false, free: false },
+  filters: { open: false, night: false, sat: false, free: false, more: false },
   origin: CFG.DEFAULT_ORIGIN || { lat: 37.5663, lng: 126.9779, label: '서울시청' }, mine: false,
   data: null, dataNote: '', loadErr: false, quiz: null, stats: null
 };
@@ -37,7 +37,7 @@ function useData(j) {
   state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
   state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
   setDistances();
-  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과, 정신건강복지센터, 상담기관 ' + state.data.length.toLocaleString() + '곳';
+  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과, 정신건강복지센터, 상담기관 ' + state.data.filter(function (f) { return !f.g; }).length.toLocaleString() + '곳';
 }
 // 저장소 사본을 먼저 보여 주고(빠름), 구글 시트 최신본이 오면 바꿔 끼운다.
 function loadData(onReady) {
@@ -108,11 +108,20 @@ function hav(a, b, c, d) {
 }
 function setDistances() { (state.data || []).forEach(function (f) { f._d = hav(state.origin.lat, state.origin.lng, f.lat, f.lng); }); }
 function fmtDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + 'm' : m < 100000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m / 1000) + 'km'; }
-function kindLabel(f) { return f.c === 'p' ? f.t + (isFree(f) ? ', 무료' : f.cost === '바우처' ? ', 마음투자 바우처' : '') : f.t; }
+/* 기본 목록은 정신건강의학과 진료·상담·보건소. 아래 그룹은 '그 밖의 기관도 보기'를 켰을 때만 보인다. */
+var GROUP = { care: '요양·재활·생활시설', gen: '일반 병의원·보건기관', unk: '진료과목 확인 필요' };
+var GROUP_NOTE = {
+  care: '오래 머물며 돌봄이나 재활을 받는 곳이에요.',
+  gen: '정신건강의학과 진료가 따로 있는지 확인되지 않은 곳이에요. 가기 전에 전화로 정신과 진료가 있는지 물어봐 주세요.',
+  unk: '이름만으로는 정신건강의학과 진료 여부를 알 수 없는 곳이에요. 가기 전에 전화로 정신과 진료가 있는지 물어봐 주세요.'
+};
+function kindLabel(f) { return (f.g ? GROUP[f.g] + ' · ' : '') + kindLabel0(f); }
+function kindLabel0(f) { return f.c === 'p' ? f.t + (isFree(f) ? ', 무료' : f.cost === '바우처' ? ', 마음투자 바우처' : '') : f.t; }
 
 function visible() {
   var n = now(), F = state.filters, q = state.q.replace(/\s/g, '');
   return (state.data || []).filter(function (f) {
+    if (!F.more && f.g) return false;
     if (q && (f.n + String(f.a || '')).replace(/\s/g, '').indexOf(q) < 0) return false;
     if (F.open) { var sk = status(f, n).k; if (sk !== 'open' && sk !== 'soon') return false; }
     if (F.night && !isNight(f)) return false;
@@ -203,7 +212,7 @@ function renderPanel() {
   var seg = [['all', '전체'], ['m', '병원·의원'], ['p', '상담·지원']].map(function (c) {
     return '<button data-kind="' + c[0] + '" aria-pressed="' + (state.kind === c[0]) + '">' + c[1] + '</button>';
   }).join('');
-  var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
+  var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일'], ['more', '그 밖의 기관도 보기']].map(function (c) {
     return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + F[c[0]] + '">' + c[1] + '</button>';
   }).join('');
   var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '"' + (state.sido === i ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
@@ -214,6 +223,7 @@ function renderPanel() {
       (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') + '</button></li>';
   }).join('');
   var timeOn = F.open || F.night || F.sat || F.free, hint = '';
+  var hidden = F.more ? 0 : (state.data || []).filter(function (f) { return f.g; }).length;
   if (!list.length) {
     hint = timeOn
       ? '이 조건에 맞는 곳을 찾지 못했어요. 운영시간 정보가 없는 곳은 시간 조건에서 빠지고, 무료만은 공공기관만 보여줘요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
@@ -229,6 +239,7 @@ function renderPanel() {
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
       (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳') + '</p>' +
+    (hidden ? '<p class="meta">요양·재활 시설, 정신과 진료가 확인되지 않은 병의원 ' + hidden.toLocaleString() + '곳은 접어 두었어요. 필요하면 \'그 밖의 기관도 보기\'를 눌러 주세요.</p>' : '') +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
     '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있어요. 몇 년 전 자료가 섞여 있으니 가기 전에 전화로 확인해 주세요.</p>' +
@@ -262,7 +273,8 @@ function detailHTML(f, n) {
   var yr = +String(f.d || '').slice(0, 4), old = yr && yr < new Date().getFullYear() - 1 ? yr : 0;
   return '<div class="detail"><button class="textbtn back" id="back">‹ 목록으로</button>' +
     '<div><p class="kind">' + esc(kindLabel(f)) + ', ' + fmtDist(f._d) + '</p><h2>' + esc(f.n) + '</h2></div>' +
-    (STAY[f.t] ? '<p class="note">' + STAY[f.t] + ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.</p>' : '') +
+    (STAY[f.t] ? '<p class="note">' + STAY[f.t] + ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.</p>'
+      : f.g ? '<p class="note">' + GROUP_NOTE[f.g] + (f.g === 'care' ? ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.' : '') + '</p>' : '') +
     (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') +
     '<div class="actions">' + (tel ? '<a class="call" href="tel:' + tel + '">전화하기 ' + esc(f.tel) + '</a>' : '') +
       '<div class="pair"><a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div></div>' +
@@ -814,7 +826,7 @@ function go(v) {
   }
   try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
 }
-function showFreeOnMap() { state.sel = null; state.kind = 'p'; state.filters = { open: false, night: false, sat: false, free: true }; go('map'); drawMap(true); }
+function showFreeOnMap() { state.sel = null; state.kind = 'p'; state.filters = { open: false, night: false, sat: false, free: true, more: false }; go('map'); drawMap(true); }
 
 document.addEventListener('click', function (e) {
   var b = e.target.closest('button, a[data-go]'); if (!b) return;
