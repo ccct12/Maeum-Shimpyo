@@ -222,6 +222,8 @@ function renderPanel() {
   p.innerHTML =
     '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요</p>' +
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
+    (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
+      : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. ' + externalLink() + '</p>' : '') +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
@@ -272,15 +274,19 @@ function detailHTML(f, n) {
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button></div>';
 }
 
+// 카카오톡 안 브라우저는 위치 권한을 막는 경우가 많아, 기본 브라우저로 여는 길을 함께 보여 준다
+var IN_KAKAO = /KAKAOTALK/i.test(navigator.userAgent);
+function externalLink() { return '<a class="textbtn" href="kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href.split('#')[0] + '#map') + '">다른 브라우저로 열기 ›</a>'; }
+function locMsg(t) { state.locMsg = t; renderPanel(); }
 function useMyLocation() {
-  if (!navigator.geolocation) { alert('이 브라우저에서는 위치를 쓸 수 없어요. 지역을 골라 주세요.'); return; }
+  if (!navigator.geolocation) { locMsg('이 브라우저에서는 위치를 쓸 수 없어요. 지역을 골라 주세요.'); return; }
   var b = $('locate'); if (b) b.textContent = '위치 찾는 중…';
   navigator.geolocation.getCurrentPosition(function (pos) {
-    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true; state.sido = null;
+    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true; state.sido = null; state.locMsg = '';
     afterOrigin();
   }, function () {
-    if (b) b.textContent = '내 위치로 찾기';
-    alert('위치를 가져오지 못했어요. 위치 권한을 허용하거나, 지역을 골라 주세요.');
+    locMsg(IN_KAKAO ? '카카오톡 안에서는 내 위치를 가져오지 못할 때가 많아요. 다른 브라우저로 열거나, 지역을 골라 주세요.'
+      : '위치를 가져오지 못했어요. 브라우저의 위치 권한을 허용하거나, 지역을 골라 주세요.');
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
 }
 function afterOrigin(fit) { $('research').hidden = true; state.sel = null; state.shown = CFG.LIST_STEP || 30; setDistances(); renderPanel(); drawMap(fit !== false); }
@@ -656,8 +662,9 @@ var sproutN = 0, sproutT;
 function petSprout() {
   var b = $('sprout'), say = $('sproutsay');
   b.classList.remove('sway'); void b.offsetWidth; b.classList.add('sway');
-  say.innerHTML = esc(SPROUT[sproutN++ % SPROUT.length]) + ' <button class="textbtn" data-go="rest">잠깐 쉬어 가기 ›</button>';
-  say.hidden = false; clearTimeout(sproutT); sproutT = setTimeout(function () { say.hidden = true; }, 8000);
+  say.innerHTML = '<span>' + esc(SPROUT[sproutN++ % SPROUT.length]) + '</span><button class="textbtn" data-go="rest">잠깐 쉬어 가기 ›</button><button class="textbtn" id="sprouthard">지금 많이 힘들어요 ›</button>';
+  $('sprouthint').hidden = true;
+  say.hidden = false; clearTimeout(sproutT); sproutT = setTimeout(function () { say.hidden = true; $('sprouthint').hidden = false; }, 10000);
 }
 
 function renderFeel(el, z) {
@@ -745,6 +752,10 @@ document.addEventListener('click', function (e) {
   if (b.id === 'back') { state.sel = null; renderPanel(); return drawMap(false); }
   if (b.id === 'more') { state.shown += CFG.LIST_STEP || 30; renderPanel(); return drawMap(false); }
   if (b.id === 'locate') return useMyLocation();
+  if (b.id === 'mapsize') {
+    var big = $('v-map').classList.toggle('big'); b.setAttribute('aria-pressed', big); b.textContent = big ? '목록 크게' : '지도 크게';
+    setTimeout(function () { relayout(); drawMap(false); }, 260); return;
+  }
   if (b.dataset.test) { state.quiz = { test: b.dataset.test, ans: [] }; return renderCheck(); }
   if (b.dataset.ans) { state.quiz.ans.push(+b.dataset.ans); renderCheck(); $('v-check').scrollTop = 0; return; }
   if (b.id === 'quit') { if (state.quiz.ans.length) state.quiz.ans.pop(); else state.quiz = null; return renderCheck(); }
@@ -755,6 +766,7 @@ document.addEventListener('click', function (e) {
   if (b.id === 'toguide') return go('guide');
   if (b.id === 'tobreath') { go('rest'); return; }
   if (b.id === 'sprout') return petSprout();
+  if (b.id === 'sprouthard') { go('rest'); state.rest = { k: 'words', feel: 'hard' }; renderRest(); return; }
   if (b.dataset.snd) { startSound(b.dataset.snd); document.querySelectorAll('[data-snd]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.snd === SND.kind); }); return; }
   // 마음 쉬기
   var rz = state.rest, restDraw = function () { renderRest(); var r = $('restbox'); var f = r && r.querySelector('h2'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); } $('v-rest').scrollTop = 0; };

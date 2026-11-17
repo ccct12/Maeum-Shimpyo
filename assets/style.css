@@ -284,12 +284,14 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 .sprout .pot{fill:#D9A47A;opacity:.85}
 .sprout .rim{fill:#C98E62;opacity:.9}
 .sprout .leaves{transform-origin:32px 52px;transform-box:view-box}
+.sprout.idle .leaves{animation:idle 7s ease-in-out infinite}
 .sprout.sway .leaves{animation:sway 1.8s ease-in-out}
+@keyframes idle{0%,68%,100%{transform:rotate(0)}76%{transform:rotate(-4deg)}84%{transform:rotate(3deg)}92%{transform:rotate(-1deg)}}
 @keyframes sway{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}60%{transform:rotate(4deg)}85%{transform:rotate(-1.5deg)}}
 .say{margin-top:6px;max-width:190px;background:var(--surface);border:1px solid var(--line);border-radius:14px 4px 14px 14px;padding:10px 12px;font-size:14px;line-height:1.5;box-shadow:0 4px 14px rgba(20,30,26,.08);display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .say .textbtn{font-size:14px;padding:2px 0}
 .hello{padding-right:60px}
-@media (prefers-reduced-motion:reduce){.sprout.sway .leaves{animation:none}}
+@media (prefers-reduced-motion:reduce){.sprout.sway .leaves,.sprout.idle .leaves{animation:none}}
 
 /* 배경 소리 */
 .sound{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
@@ -297,3 +299,30 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 .sound button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted)}
 .sound button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
 .say[hidden]{display:none}
+
+.hint{margin-top:2px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.hint[hidden]{display:none}
+.say .textbtn{text-align:left}
+
+/* 지도 크게 보기 (모바일) */
+.mapsize{position:absolute;right:10px;top:10px;z-index:3;border:0;border-radius:999px;background:#FBFCFA;color:#1E2A25;padding:7px 13px;font-size:13px;font-weight:600;box-shadow:0 1px 4px rgba(20,30,26,.3)}
+.locmsg .textbtn{font-size:14px;padding:0}
+@media (max-width:899px){
+  .mapwrap{flex:0 0 44%;transition:flex-basis .25s ease}
+  #v-map.big .mapwrap{flex-basis:74%}
+}
+@media (min-width:900px){.mapsize{display:none}}
+
+/* 작은 화면: 휴대폰 글자 크기를 크게 해 둔 경우에도 덜 답답하도록 제목을 한 단계 낮춘다 */
+@media (max-width:599px){
+  .col h2,.fsec h2,.detail h2{font-size:22px}
+  .hello{font-size:clamp(30px,8.4vw,52px)}
+  .ways b{font-size:19px}
+  .tile{grid-template-columns:minmax(84px,auto) 1fr;gap:0 14px}
+  .tile strong{font-size:25px}
+  .q{font-size:21px}
+  .score strong{font-size:23px}
+  .guide h3{font-size:19px}
+  .crisis{font-size:13px;gap:2px 12px}
+  .rest .phrase p{font-size:22px}
+}
