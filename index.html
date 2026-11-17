@@ -20,7 +20,7 @@
 <link rel="icon" href="assets/img/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=202611171905">
+<link rel="stylesheet" href="assets/style.css?v=202611171930">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -64,6 +64,7 @@
           <div class="breathbox" id="breathbox" hidden><div class="lung" id="lung" aria-hidden="true"></div><p id="breathtext" aria-live="polite"></p></div>
           <button class="textbtn" data-go="rest">숨 말고 다른 방법도 있어요 ›</button>
         </div>
+        <p class="homefoot">사이트에 바라는 점이나 틀린 정보가 있다면 <button class="textbtn" data-go="ask">알려 주세요 ›</button></p>
       </div>
     </section>
 
@@ -83,6 +84,9 @@
 
     <!-- 마음 쉬기 -->
     <section class="view page" id="v-rest" aria-label="마음 쉬기"><div class="col rest" id="restbox"></div></section>
+
+    <!-- 알려 주세요 -->
+    <section class="view page" id="v-ask" aria-label="알려 주세요"><div class="col ask" id="askbox"></div></section>
 
     <!-- 통계 -->
     <section class="view page" id="v-facts" aria-label="마음 통계"><div class="col wide" id="factsbox"></div></section>
@@ -206,7 +210,7 @@
           <li>정해진 말이 없어도 괜찮아요. "어디서부터 말해야 할지 모르겠어요"라고 해도 돼요.</li></ul></section>
         <section><h3>청소년이라면</h3>
           <ul><li><a href="tel:1388">1388 청소년 상담전화</a>에서 고민을 먼저 이야기해 볼 수 있어요.</li></ul></section>
-        <p class="note">이 안내는 정신건강 전문가와 법률 검토를 거치기 전 초안이에요.</p>
+        <p class="note">이 안내는 정신건강 전문가와 법률 검토를 거치기 전 초안이에요. 고칠 점이 보이면 <button class="textbtn" data-go="ask">알려 주세요</button>.</p>
       </div>
     </section>
   </main>
@@ -215,7 +219,7 @@
     <button data-go="home">처음</button><button data-go="map">찾기</button><button data-go="check">살펴보기</button><button data-go="rest">쉬기</button><button data-go="facts">통계</button>
   </nav>
 </div>
-<script src="assets/config.js?v=202611171905"></script>
-<script src="assets/app.js?v=202611171905"></script>
+<script src="assets/config.js?v=202611171930"></script>
+<script src="assets/app.js?v=202611171930"></script>
 </body>
 </html>

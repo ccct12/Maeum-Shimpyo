@@ -236,13 +236,48 @@ function cacheGet_(key) {
 }
 function clearWebCache() { CacheService.getScriptCache().removeAll(['facilities_n', 'stats_n']); }
 
+/* ───────── 의견 받기 ─────────
+ * 사이트의 '이 기관 정보가 달라요'와 '알려 주세요'가 POST로 보낸다. '의견_접수' 탭에 한 줄씩 쌓는다.
+ * - 이메일은 선택. 답장에만 쓰고 처리가 끝나면 지운다(사이트 안내 문구와 같게 운영).
+ * - 봇이 채우는 숨은 칸(hp)이 차 있으면 저장하지 않는다. 시간당 FB_MAX_PER_HOUR건까지만 받는다.
+ * - 셀이 수식으로 실행되지 않게 =,+,-,@로 시작하는 값은 글자로 저장한다.
+ */
+var FB_SHEET = '의견_접수', FB_MAX_PER_HOUR = 60;
+var FB_TYPES = { fix: '기관 정보 오류', idea: '사이트 개선 의견', pro: '전문가·기관 연락' };
+var FB_HEAD = ['접수일시', '종류', '기관ID', '기관명', '항목', '내용', '이메일(선택)', '처리상태', '메모'];
+
+function doPost(e) {
+  var out = function (o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); };
+  var d;
+  try { d = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return out({ ok: false, e: 'bad' }); }
+  if (d.hp) return out({ ok: true });                                  // 봇: 저장하지 않고 성공처럼 응답
+  if (!FB_TYPES[d.type]) return out({ ok: false, e: 'type' });
+  var text = clip_(d.text, 1000), email = clip_(d.email, 100), item = clip_(d.item, 30), id = clip_(d.id, 12), name = clip_(d.name, 80);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return out({ ok: false, e: 'email' });
+  if (d.type === 'fix' ? !(item || text) : !text) return out({ ok: false, e: 'empty' });
+  if (id && !/^[A-Z]-\d{3,6}$/.test(id)) id = '';
+  var cache = CacheService.getScriptCache(), hk = 'fb_' + Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMddHH'), n = +(cache.get(hk) || 0);
+  if (n >= FB_MAX_PER_HOUR) return out({ ok: false, e: 'busy' });
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return out({ ok: false, e: 'busy' });
+  try {
+    var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(FB_SHEET);
+    if (!sh) { sh = ss.insertSheet(FB_SHEET); sh.appendRow(FB_HEAD); sh.setFrozenRows(1); }
+    sh.appendRow([new Date(), FB_TYPES[d.type], id, safe_(name), safe_(item), safe_(text), safe_(email), '접수', '']);
+    cache.put(hk, String(n + 1), 3700);
+  } finally { lock.releaseLock(); }
+  return out({ ok: true });
+}
+function clip_(v, n) { return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B-\u001F]/g, '').trim().slice(0, n); }
+function safe_(v) { return /^[=+\-@]/.test(v) ? "'" + v : v; }
+
 /* ───────── 방문자 집계 ─────────
  * 사이트가 ?type=hit&e=<이벤트> 로 부른다. 날짜별 횟수만 센다.
  * IP·기기 정보·위치·자가검진 응답은 받지도 저장하지도 않는다.
  */
 var HIT_COL = {
   visit: '방문', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
-  'view:rest': '마음 쉬기', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
+  'view:rest': '마음 쉬기', 'view:ask': '알려 주세요', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
 };
 function hit_(ev) {
   var name = HIT_COL[ev];

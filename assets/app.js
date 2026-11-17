@@ -240,7 +240,8 @@ function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
     '<span>기관 정보: 건강보험심사평가원 병원정보서비스(2026), 전국건강증진센터표준데이터(각 지자체), 국립정신건강센터 정신건강 관련기관 정보(2022), 전국민 마음투자 지원사업 제공기관 목록(2024). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
-    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜별 횟수만 세요.</span></div>';
+    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜별 횟수만 세요.</span>' +
+    '<button class="textbtn" data-go="ask">정보가 틀렸거나 바라는 점이 있다면 알려 주세요 ›</button></div>';
 }
 function detailHTML(f, n) {
   var s = status(f, n), rows = '';
@@ -272,7 +273,7 @@ function detailHTML(f, n) {
       '<div><span>정보 출처</span><span>' + esc(srcLabel(f)) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
     (old ? '<p class="note">' + old + '년 자료라 지금은 옮겼거나 운영하지 않을 수 있어요. 가기 전에 꼭 전화로 확인해 주세요.</p>' : '') +
     '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 전화로 확인해 주세요.</p>' +
-    '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button></div>';
+    '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' + reportHTML(f) + '</div>';
 }
 
 // 카카오톡 안 브라우저는 위치 권한을 막는 경우가 많아, 기본 브라우저로 여는 길을 함께 보여 준다
@@ -719,8 +720,66 @@ document.addEventListener('click', function (e) {
   else if (/map\.kakao\.com\/link\/to|map\.naver\.com/.test(h)) hit('route');
 }, true);
 
+/* ───────── 의견 보내기: 시트 '의견_접수' 탭으로. 이메일은 선택 ───────── */
+var FB_ERR = { email: '이메일 주소를 다시 확인해 주세요.', empty: '내용을 적어 주세요.', busy: '지금 의견이 많이 몰렸어요. 잠시 뒤 다시 보내 주세요.' };
+function sendFeedback(payload, done) {
+  if (!CFG.DATA_URL) return done('net');
+  var ctl = window.AbortController ? new AbortController() : null, t = ctl && setTimeout(function () { ctl.abort(); }, 15000);
+  // 본문을 글자(text/plain)로 보내 사전 요청(CORS preflight) 없이 Apps Script로 바로 간다
+  fetch(CFG.DATA_URL, ctl ? { method: 'POST', body: JSON.stringify(payload), signal: ctl.signal } : { method: 'POST', body: JSON.stringify(payload) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { done(j && j.ok ? null : (j && j.e) || 'net'); })
+    .catch(function () { done('net'); })
+    .finally(function () { if (t) clearTimeout(t); });
+}
+function errText(e) { return FB_ERR[e] || '보내지 못했어요. 잠시 뒤 다시 해 주세요.'; }
+var HP = '<input class="hp" name="website" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true">';
+
+// 기관 상세: 이 기관 정보가 달라요
+var FIX_ITEMS = ['전화번호가 달라요', '운영시간이 달라요', '문을 닫았어요', '다른 곳으로 옮겼어요', '기타'];
+function reportHTML(f) {
+  var r = state.report;
+  if (!r || r.id !== f.id) return '<button class="textbtn" id="reportopen">이 기관 정보가 달라요</button>';
+  if (r.sent) return '<p class="note" id="reportbox">알려 주셔서 고마워요. 확인해서 고칠게요.</p>';
+  return '<div class="report" id="reportbox"><h3>어떤 점이 다른가요?</h3>' +
+    '<div class="filters wrap" role="group" aria-label="다른 점">' + FIX_ITEMS.map(function (x) { return '<button class="chip" data-ritem="' + x + '" aria-pressed="' + (r.item === x) + '">' + x + '</button>'; }).join('') + '</div>' +
+    '<textarea id="rtext" class="field" rows="3" maxlength="300" placeholder="알고 계신 내용을 적어 주세요 (선택)">' + esc(r.text || '') + '</textarea>' + HP +
+    (r.err ? '<p class="err" role="alert">' + esc(r.err) + '</p>' : '') +
+    '<div class="two"><button class="ghost" id="reportcancel">닫기</button><button class="primary" id="reportsend"' + (r.busy ? ' disabled' : '') + '>' + (r.busy ? '보내는 중…' : '보내기') + '</button></div>' +
+    '<p class="caution">이름이나 연락처는 적지 않아도 돼요. 보낸 내용은 기관 정보를 고치는 데만 써요.</p></div>';
+}
+function redrawReport() { renderPanel(); var b = $('reportbox'); if (b) b.scrollIntoView({ block: 'center' }); }
+
+// 알려 주세요
+var ASK_TYPES = [['idea', '사이트 개선 의견'], ['fix', '기관 정보가 달라요'], ['pro', '전문가·기관 담당자예요']];
+var ASK_LEAD = {
+  idea: '불편했던 점, 있으면 좋겠는 것, 문구가 마음에 걸렸던 곳까지 무엇이든 괜찮아요.',
+  fix: '기관 화면에서 바로 알리려면 기관 상세의 "이 기관 정보가 달라요"를 눌러도 돼요.',
+  pro: '정신건강 전문가, 상담사, 기관 담당자분의 의견과 연락을 기다려요. 답장받을 이메일을 남겨 주세요.'
+};
+function keepAsk() { var a = state.ask, t = $('atext'), e = $('aemail'), n = $('aname'); if (t) a.text = t.value; if (e) a.email = e.value; if (n) a.name = n.value; }
+function renderAsk() {
+  var el = $('askbox'), a = state.ask || (state.ask = { type: 'idea' });
+  var top = '<h2>알려 주세요</h2><div class="help small"><p>여기 남긴 글에는 바로 답하지 못해요. 지금 많이 힘들다면 전화로 이야기해 주세요. 24시간 받아요.</p><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a></div>';
+  if (a.sent) {
+    el.innerHTML = top + '<p class="lead">보내 주셔서 고마워요. 꼼꼼히 읽어 볼게요.' + (a.sentEmail ? ' 답장이 필요하면 남겨 주신 이메일로 연락드릴게요.' : '') + '</p>' +
+      '<button class="ghost" id="askagain">하나 더 보내기</button><button class="ghost" data-go="home">처음으로</button>';
+    return;
+  }
+  el.innerHTML = top +
+    '<div class="seg" role="group" aria-label="무엇을 알려 주실까요">' + ASK_TYPES.map(function (t) { return '<button data-atype="' + t[0] + '" aria-pressed="' + (a.type === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+    '<p class="lead">' + ASK_LEAD[a.type] + '</p>' +
+    (a.type === 'fix' ? '<label class="lbl" for="aname">기관 이름</label><input id="aname" class="field" maxlength="80" value="' + esc(a.name || '') + '">' : '') +
+    '<label class="lbl" for="atext">내용</label><textarea id="atext" class="field" rows="6" maxlength="1000">' + esc(a.text || '') + '</textarea>' +
+    '<label class="lbl" for="aemail">이메일 <span>(선택)</span></label><input id="aemail" class="field" type="email" inputmode="email" autocomplete="email" maxlength="100" value="' + esc(a.email || '') + '">' +
+    '<p class="caution">답장이 필요할 때만 적어 주세요. 이메일은 답장하는 데에만 쓰고, 처리가 끝나면 지워요.</p>' + HP +
+    '<p class="note">이름, 연락처, 병력처럼 나를 알아볼 수 있는 내용은 적지 말아 주세요.</p>' +
+    (a.err ? '<p class="err" role="alert">' + esc(a.err) + '</p>' : '') +
+    '<button class="primary" id="asksend"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? '보내는 중…' : '보내기') + '</button>';
+}
+
 /* ───────── 화면 전환 ───────── */
-var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide'];
+var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide', 'ask'];
 function go(v) {
   if (state.view !== v || !go.done) hit('view:' + v); go.done = true;
   if (state.view === 'rest' && v !== 'rest') { stopRest(); stopSound(); state.rest = null; }
@@ -733,6 +792,7 @@ function go(v) {
   }
   if (v === 'check') renderCheck();
   if (v === 'rest') { renderRest(); $('v-rest').scrollTop = 0; }
+  if (v === 'ask') { renderAsk(); $('v-ask').scrollTop = 0; }
   if (v === 'facts') {
     if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('factsbox').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
     renderFacts();
@@ -750,7 +810,31 @@ document.addEventListener('click', function (e) {
   if (b.id === 'copy') { var t = b.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { b.textContent = '복사했어요'; }); return; }
   if (b.id === 'breathbtn') return breathe();
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
-  if (b.id === 'back') { state.sel = null; renderPanel(); return drawMap(false); }
+  if (b.id === 'back') { state.sel = null; state.report = null; renderPanel(); return drawMap(false); }
+  // 이 기관 정보가 달라요
+  if (b.id === 'reportopen') { state.report = { id: state.sel }; return redrawReport(); }
+  if (b.id === 'reportcancel') { state.report = null; return renderPanel(); }
+  if (b.dataset.ritem) { state.report.item = b.dataset.ritem; document.querySelectorAll('[data-ritem]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); return; }
+  if (b.id === 'reportsend') {
+    var r = state.report, rf = byId(r.id); r.text = ($('rtext') || {}).value || '';
+    if (!r.item && !r.text.trim()) { r.err = '다른 점을 하나 골라 주세요.'; return redrawReport(); }
+    r.busy = true; r.err = ''; redrawReport();
+    return sendFeedback({ type: 'fix', id: r.id, name: rf ? rf.n : '', item: r.item || '', text: r.text, hp: ($('hp') || {}).value || '' }, function (e) {
+      r.busy = false; if (e) r.err = errText(e); else r.sent = true; if (state.sel === r.id) redrawReport();
+    });
+  }
+  // 알려 주세요
+  if (b.dataset.atype) { keepAsk(); state.ask.type = b.dataset.atype; state.ask.err = ''; return renderAsk(); }
+  if (b.id === 'askagain') { state.ask = { type: state.ask.type }; return renderAsk(); }
+  if (b.id === 'asksend') {
+    keepAsk(); var a = state.ask;
+    if (!String(a.text || '').trim()) { a.err = '내용을 적어 주세요.'; renderAsk(); return $('atext').focus(); }
+    a.busy = true; a.err = ''; renderAsk();
+    return sendFeedback({ type: a.type, name: a.type === 'fix' ? a.name || '' : '', text: a.text, email: String(a.email || '').trim(), hp: ($('hp') || {}).value || '' }, function (e) {
+      a.busy = false; if (e) a.err = errText(e); else { a.sent = true; a.sentEmail = !!String(a.email || '').trim(); }
+      if (state.view === 'ask') { renderAsk(); var h = $('askbox').querySelector(e ? '.err' : 'h2'); if (h) h.scrollIntoView({ block: 'center' }); }
+    });
+  }
   if (b.id === 'more') { state.shown += CFG.LIST_STEP || 30; renderPanel(); return drawMap(false); }
   if (b.id === 'locate') return useMyLocation();
   if (b.id === 'mapsize') {

@@ -374,3 +374,25 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 .actions.trio{display:grid;grid-template-columns:1fr;gap:8px}
 .actions.trio a{font-weight:600;font-variant-numeric:tabular-nums}
 @media (min-width:600px){.actions.trio{grid-template-columns:repeat(3,1fr)}}
+
+/* 알려 주세요 · 이 기관 정보가 달라요 */
+.field{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 14px;font:inherit;color:inherit;resize:vertical}
+.field:focus{border-color:var(--green);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 25%,transparent)}
+.lbl{font-weight:600;margin-bottom:-10px}
+.lbl span{font-weight:400;color:var(--muted)}
+.hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
+.err{color:#B4442A;font-size:14px;font-weight:600}
+@media (prefers-color-scheme:dark){.err{color:#F09A7E}}
+.help.small{padding:16px 18px;gap:6px}
+.help.small p{font-size:14px;opacity:.9}
+.help.small a{font-size:16px}
+.ask .seg{flex-wrap:wrap}
+.ask .seg button{flex:1 1 auto}
+.report{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.report h3{font-family:var(--f-body);font-size:16px;font-weight:600}
+.filters.wrap{flex-wrap:wrap;margin:0;padding:0;overflow:visible}
+.report .two{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.primary:disabled{opacity:.6;cursor:default}
+.homefoot{font-size:14px;color:var(--muted)}
+.homefoot .textbtn,.foot .textbtn,.note .textbtn{font-size:inherit;padding:0}
+.foot .textbtn{align-self:flex-start;margin-top:4px}
