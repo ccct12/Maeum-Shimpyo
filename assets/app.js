@@ -25,19 +25,31 @@ var state = {
 };
 
 /* ───────── 데이터 ───────── */
-function getJSON(url) {
-  return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+function getJSON(url, ms) {
+  // cache:'no-cache'는 Apps Script 주소 이동과 겹치면 응답이 멈춰서 쓰지 않는다. 대신 시간 제한을 둔다.
+  var ctl = window.AbortController ? new AbortController() : null;
+  var timer = ctl && setTimeout(function () { ctl.abort(); }, ms || 12000);
+  return fetch(url, ctl ? { signal: ctl.signal } : {})
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .finally(function () { if (timer) clearTimeout(timer); });
 }
-function loadData() {
-  var primary = CFG.DATA_URL ? getJSON(CFG.DATA_URL + (CFG.DATA_URL.indexOf('?') < 0 ? '?' : '&') + 'type=facilities') : Promise.reject('no url');
-  return primary.catch(function () { return getJSON(CFG.FALLBACK_URL); })
+function useData(j) {
+  state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
+  state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
+  setDistances();
+  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과와 무료 공공 상담기관 ' + state.data.length.toLocaleString() + '곳';
+}
+// 저장소 사본을 먼저 보여 주고(빠름), 구글 시트 최신본이 오면 바꿔 끼운다.
+function loadData(onReady) {
+  var shown = false;
+  var fb = getJSON(CFG.FALLBACK_URL, 15000).then(function (j) { if (!shown) { useData(j); shown = true; onReady(); } }).catch(function () {});
+  if (!CFG.DATA_URL) return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } });
+  var stamp = new Date().toISOString().slice(0, 13);  // 한 시간 단위로만 새로 받기
+  return getJSON(CFG.DATA_URL + (CFG.DATA_URL.indexOf('?') < 0 ? '?' : '&') + 'type=facilities&v=' + stamp, 20000)
     .then(function (j) {
-      state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
-      state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
-      setDistances();
-      var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과와 무료 공공 상담기관 ' + state.data.length.toLocaleString() + '곳';
+      var keep = state.sel; useData(j); shown = true; state.sel = keep && byId(keep) ? keep : null; onReady();
     })
-    .catch(function () { state.loadErr = true; state.data = []; });
+    .catch(function () { return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } }); });
 }
 
 // 예전 Apps Script(한글 열 이름 그대로)로 배포돼 있어도 읽을 수 있게 맞춘다
@@ -484,6 +496,7 @@ function renderPanelKeepFocus() { if (document.activeElement && document.activeE
   go(VIEWS.indexOf(v) >= 0 ? v : 'home');
   hitVisit();
   loadKakao();
-  loadData().then(function () { if (state.view === 'map') renderPanel(); drawMap(true); });
+  var first = true;
+  loadData(function () { if (state.view === 'map' && !state.sel) renderPanel(); drawMap(first); first = false; });
 })();
 })();
