@@ -237,3 +237,27 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
   .filters::-webkit-scrollbar{display:none}
   .chip{flex:0 0 auto;padding:5px 12px}
 }
+
+/* 마음 쉬기 */
+.rest .pick small{line-height:1.5}
+.rest .lens{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rest .run{display:flex;flex-direction:column;align-items:center;gap:22px;padding:30px 0 10px;min-height:260px;justify-content:center}
+.rest .run p{font-family:var(--f-display);font-size:21px;line-height:1.5;text-align:center;min-height:3em}
+.rest .bar.wide{align-self:stretch;height:6px}
+.rest .bar.wide i{transition:width 1s linear}
+.rest .big{font-family:var(--f-display);font-weight:400;font-size:56px;line-height:1;color:var(--green);font-variant-numeric:tabular-nums}
+.rest .step{display:flex;flex-direction:column;gap:8px;padding:12px 0}
+.rest .step h3{font-size:22px}
+.rest .two{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.rest .two button:disabled{opacity:.4;cursor:default}
+.rest .phrase{background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:36px 24px 18px;display:flex;flex-direction:column;gap:18px;min-height:200px;justify-content:space-between}
+.rest .phrase p{font-family:var(--f-display);font-size:24px;line-height:1.55}
+.rest .phrase span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;align-self:flex-end}
+.rest .feel{display:grid;gap:10px}
+.rest .feel button{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;text-align:left;font-size:17px}
+@media (hover:hover){.rest .feel button:hover{border-color:var(--green)}}
+.rest h2:focus{outline:none}
+.safe{margin:0;padding:12px 0 0 18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.home .breath .textbtn{font-size:15px}
+.rest>.textbtn{align-self:flex-start}
+.panel>.textbtn,.detail>.textbtn,.breath>.textbtn{align-self:flex-start}

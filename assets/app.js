@@ -37,7 +37,7 @@ function useData(j) {
   state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
   state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
   setDistances();
-  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과와 무료 공공 상담기관 ' + state.data.length.toLocaleString() + '곳';
+  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과, 정신건강복지센터, 상담기관 ' + state.data.length.toLocaleString() + '곳';
 }
 // 저장소 사본을 먼저 보여 주고(빠름), 구글 시트 최신본이 오면 바꿔 끼운다.
 function loadData(onReady) {
@@ -53,7 +53,14 @@ function loadData(onReady) {
 }
 
 // 예전 Apps Script(한글 열 이름 그대로)로 배포돼 있어도 읽을 수 있게 맞춘다
-var SRC_SHORT = { '건강보험심사평가원_병원정보서비스': '건강보험심사평가원', '전국건강증진센터표준데이터': '지자체 공공데이터' };
+var SRC_SHORT = { '건강보험심사평가원_병원정보서비스': '건강보험심사평가원', '전국건강증진센터표준데이터': '지자체 공공데이터',
+  '국립정신건강센터_정신건강 관련기관 정보': '국립정신건강센터 정신건강 관련기관 정보', '전국민마음투자 바우처 제공기관 목록': '전국민 마음투자 지원사업 제공기관 목록' };
+function srcLabel(f) { return SRC_SHORT[f.src] || f.src || ''; }
+// 찾아가서 바로 상담받는 곳이 아닌 시설은 상세 화면에서 따로 알려 준다
+var STAY = {
+  '정신재활시설': '정신질환에서 회복 중인 분이 재활 프로그램을 이용하거나 함께 생활하는 곳이에요.',
+  '정신요양시설': '만성 정신질환이 있는 분이 오래 머무르며 요양하는 시설이에요.'
+};
 function normalize(f) {
   if (!f || f.id) return f;
   if (f['노출'] !== undefined && String(f['노출']).toUpperCase() !== 'TRUE') return null;
@@ -193,7 +200,7 @@ function renderPanel() {
   if (f) { p.innerHTML = detailHTML(f, n); p.scrollTop = 0; var b = $('back'); if (b) b.focus(); return; }
 
   var list = visible(), F = state.filters;
-  var seg = [['all', '전체'], ['m', '병원·의원'], ['p', '상담기관']].map(function (c) {
+  var seg = [['all', '전체'], ['m', '병원·의원'], ['p', '상담·지원']].map(function (c) {
     return '<button data-kind="' + c[0] + '" aria-pressed="' + (state.kind === c[0]) + '">' + c[1] + '</button>';
   }).join('');
   var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
@@ -209,7 +216,7 @@ function renderPanel() {
   var timeOn = F.open || F.night || F.sat || F.free, hint = '';
   if (!list.length) {
     hint = timeOn
-      ? '이 조건에 맞는 곳을 찾지 못했어요. 병원·의원은 아직 진료시간·비용 정보가 없어서 시간 조건과 무료만에서는 빠져요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
+      ? '이 조건에 맞는 곳을 찾지 못했어요. 운영시간 정보가 없는 곳은 시간 조건에서 빠지고, 무료만은 공공기관만 보여줘요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
       : '찾는 곳이 없어요. 이름을 다르게 적어 보거나 다른 지역을 골라 보세요.';
   }
   p.innerHTML =
@@ -222,13 +229,14 @@ function renderPanel() {
       (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳') + '</p>' +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<p class="empty">' + hint + '</p>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
-    '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있고, 공휴일은 반영되지 않았어요. 시간이 안 적힌 곳은 가기 전에 전화로 확인해 주세요.</p>' +
+    '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있어요. 몇 년 전 자료가 섞여 있으니 가기 전에 전화로 확인해 주세요.</p>' +
+    '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' +
     footHTML();
 }
 function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g, '').trim().split(/\s+/); return t.slice(1, 5).join(' '); }
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
-    '<span>기관 정보: 건강보험심사평가원 병원정보서비스, 전국건강증진센터표준데이터(각 지자체). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
+    '<span>기관 정보: 건강보험심사평가원 병원정보서비스(2026), 전국건강증진센터표준데이터(각 지자체), 국립정신건강센터 정신건강 관련기관 정보(2022), 전국민 마음투자 지원사업 제공기관 목록(2024). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
     '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜별 횟수만 세요.</span></div>';
 }
 function detailHTML(f, n) {
@@ -247,8 +255,10 @@ function detailHTML(f, n) {
   var kakao = 'https://map.kakao.com/link/to/' + encodeURIComponent(f.n) + ',' + f.lat + ',' + f.lng;
   var naver = 'https://map.naver.com/p/search/' + encodeURIComponent(f.n);
   var web = f.web ? (/^https?:\/\//.test(f.web) ? f.web : 'http://' + f.web) : '';
+  var yr = +String(f.d || '').slice(0, 4), old = yr && yr < new Date().getFullYear() - 1 ? yr : 0;
   return '<div class="detail"><button class="textbtn back" id="back">‹ 목록으로</button>' +
     '<div><p class="kind">' + esc(kindLabel(f)) + ', ' + fmtDist(f._d) + '</p><h2>' + esc(f.n) + '</h2></div>' +
+    (STAY[f.t] ? '<p class="note">' + STAY[f.t] + ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.</p>' : '') +
     (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') +
     '<div class="actions">' + (tel ? '<a class="call" href="tel:' + tel + '">전화하기 ' + esc(f.tel) + '</a>' : '') +
       '<div class="pair"><a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div></div>' +
@@ -256,8 +266,10 @@ function detailHTML(f, n) {
     '<div class="rows">' + rows + '</div>' +
     '<div class="rows"><div><span>주소</span><span>' + esc(f.a) + ' <button class="textbtn" id="copy" data-copy="' + esc(f.a) + '">복사</button></span></div>' +
       (web ? '<div><span>홈페이지</span><span><a href="' + esc(web) + '" target="_blank" rel="noopener nofollow">열기</a></span></div>' : '') +
-      '<div><span>정보 출처</span><span>' + esc(f.src) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
-    '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 전화로 확인해 주세요.</p></div>';
+      '<div><span>정보 출처</span><span>' + esc(srcLabel(f)) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
+    (old ? '<p class="note">' + old + '년 자료라 지금은 옮겼거나 운영하지 않을 수 있어요. 가기 전에 꼭 전화로 확인해 주세요.</p>' : '') +
+    '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 전화로 확인해 주세요.</p>' +
+    '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button></div>';
 }
 
 function useMyLocation() {
@@ -291,7 +303,7 @@ var TESTS = {
 var TEST_SRC = '문항 출처: PHQ-9·GAD-7 공식 한국어판 (Pfizer Inc.)';
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
 function renderCheck() {
-  var el = $('check'), z = state.quiz;
+  var el = $('checkbox'), z = state.quiz;
   if (!z) {
     el.innerHTML = '<h2>요즘 마음, 잠깐 살펴볼까요</h2><p class="lead">지난 2주를 떠올리며 답하면 돼요. 정답은 없어요. 무료이고 가입도 필요 없어요.</p>' +
       '<div class="pick">' + Object.keys(TESTS).map(function (k) { return '<button data-test="' + k + '"><b>' + TESTS[k].name + '</b><small>' + TESTS[k].sub + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
@@ -314,9 +326,9 @@ function renderCheck() {
   var tier = risk || score >= 15 ? 3 : score >= 10 ? 2 : score >= 5 ? 1 : 0;
   var GUIDE = [
     { p: '지금 답한 내용으로는 증상이 많지 않아요. 그래도 힘들다고 느끼면 그 느낌이 먼저예요.',
-      b: [['tobreath', '30초 숨 고르기', 'ghost'], ['tofacts', '나만 이런 걸까요? 숫자로 보기', 'ghost']] },
+      b: [['tobreath', '잠깐 마음 쉬기', 'ghost'], ['tofacts', '나만 이런 걸까요? 숫자로 보기', 'ghost']] },
     { p: '가벼운 신호가 보여요. 잠, 끼니, 짧은 산책처럼 하루의 기본부터 챙겨 보세요. 이런 상태가 2주 넘게 이어지면 상담을 받아 보는 것도 좋은 방법이에요.',
-      b: [['tofree', '무료 공공 상담기관 보기', 'primary'], ['tobreath', '30초 숨 고르기', 'ghost']] },
+      b: [['tofree', '무료 공공 상담기관 보기', 'primary'], ['tobreath', '잠깐 마음 쉬기', 'ghost']] },
     { p: '전문가와 이야기해 보면 도움이 될 수 있는 신호예요. 정신건강복지센터에서는 비용 부담 없이 첫 상담을 받을 수 있고, 가까운 의원에 예약해도 돼요.',
       b: [['tomap', '가까운 기관 보기', 'primary'], ['tofree', '무료 공공 상담기관만 보기', 'ghost'], ['toguide', '병원이 처음이라 걱정된다면', 'ghost']] },
     { p: '혼자 감당하기에 무거운 상태일 수 있어요. 이번 주 안에 전문가와 이야기해 보길 권해요. 혼자 가기 어렵다면 가족이나 친구에게 같이 가 달라고 하거나, 전화 상담부터 시작해도 괜찮아요.',
@@ -335,7 +347,7 @@ function renderCheck() {
 function man(v) { return (v / 10000).toFixed(v >= 1e6 ? 0 : 1).replace(/\.0$/, '') + '만'; }
 function man1(v) { return (v / 10000).toFixed(1) + '만'; }
 function renderFacts() {
-  var el = $('facts'), S = state.stats;
+  var el = $('factsbox'), S = state.stats;
   if (!S) { el.innerHTML = '<p class="empty">통계를 불러오는 중이에요…</p>'; return; }
   var T = S.trend, last = T.years.length - 1;
   var up = function (a) { return Math.round((a[last] / a[0] - 1) * 100); };
@@ -363,8 +375,9 @@ function renderFacts() {
       '<div class="tiles">' + S.tiles.help.map(tile).join('') + '</div>' +
       '<div class="callout"><p>지금 이야기할 곳이 필요하다면</p><div class="actions"><a class="call" href="tel:109">109 자살예방 상담전화</a><div class="pair"><a href="tel:15770199">1577-0199 위기상담</a><a href="tel:1388">1388 청소년 상담</a></div></div></div></div>' +
 
-    '<div class="fsec"><h2>가까운 무료 상담기관, 몰라서 못 가는 경우가 많아요</h2>' +
-      '<div class="tiles">' + tile(S.tiles.door) + '</div>' +
+    '<div class="fsec"><h2>도움을 받는 사람은 아직 많지 않아요</h2>' +
+      '<div class="tiles">' + (S.tiles.svc ? tile(S.tiles.svc) : '') + tile(S.tiles.door) + '</div>' +
+      '<p class="lead">혼자 버티는 사람이 그만큼 많다는 뜻이기도 해요. 가까운 무료 상담기관이 있는 줄 몰라서 못 가는 경우도 많아요.</p>' +
       '<p class="lead">정신건강복지센터 같은 공공기관에서는 비용 부담 없이 상담을 시작할 수 있어요.</p>' +
       '<button class="primary" id="factsfree">가까운 무료 공공 상담기관 보기</button></div>' +
     '<p class="caution">통계는 조사마다 대상·연도·지역이 달라요. 각 수치 아래의 출처와 기준을 함께 봐 주세요.</p>';
@@ -452,19 +465,164 @@ function barChart() {
   });
 }
 
-/* ───────── 숨 고르기: 4초 들이쉬고 6초 내쉬기를 세 번 ───────── */
+/* ───────── 숨 고르기: 4초 들이쉬고 6초 내쉬기 (숨 참기 없음) ───────── */
+function runBreath(lung, txt, cycles, timers, done) {
+  var t = 100;
+  for (var i = 0; i < cycles; i++) {
+    timers.push(setTimeout(function () { lung.className = 'lung in'; txt.textContent = '코로 천천히 들이쉬어요'; }, t)); t += 4000;
+    timers.push(setTimeout(function () { lung.className = 'lung out'; txt.textContent = '입으로 길게 내쉬어요'; }, t)); t += 6000;
+  }
+  timers.push(setTimeout(done, t));
+}
 var breathT = [];
 function breathe() {
   var box = $('breathbox'), lung = $('lung'), txt = $('breathtext'), btn = $('breathbtn');
   breathT.forEach(clearTimeout); breathT = [];
   if (btn.getAttribute('aria-expanded') === 'true') { box.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.textContent = '30초 숨 고르기'; lung.className = 'lung'; return; }
   box.hidden = false; btn.setAttribute('aria-expanded', 'true'); btn.textContent = '그만하기';
-  var t = 100;
-  for (var i = 0; i < 3; i++) {
-    breathT.push(setTimeout(function () { lung.className = 'lung in'; txt.textContent = '코로 천천히 들이쉬어요'; }, t)); t += 4000;
-    breathT.push(setTimeout(function () { lung.className = 'lung out'; txt.textContent = '입으로 길게 내쉬어요'; }, t)); t += 6000;
+  runBreath(lung, txt, 3, breathT, function () { txt.textContent = '잘했어요. 필요하면 한 번 더 해도 돼요.'; btn.textContent = '닫기'; });
+}
+
+/* ───────── 마음 쉬기: 호흡·감각·몸·문구 중 지금 맞는 것 하나 ─────────
+ * 고른 것과 "지금은 어떤가요" 답은 저장하지도, 보내지도 않는다. */
+var REST = {
+  breath: { t: '숨 고르기', s: '4초 들이쉬고 6초 내쉬기 · 30초~2분' },
+  belly:  { t: '배로 숨쉬기', s: '배에 손을 얹고 편한 속도로 · 1분' },
+  ground: { t: '감각으로 돌아오기', s: '생각이 멈추지 않을 때 · 보이는 것, 들리는 것 세어 보기 · 2~3분' },
+  body:   { t: '몸 풀기', s: '어깨와 손에 힘 줬다 빼기 · 1분' },
+  words:  { t: '안심 문구', s: '천천히 한 장씩 넘겨 보기' }
+};
+var REST_NEXT = { breath: 'ground', belly: 'ground', ground: 'body', body: 'words', words: 'breath' };
+var GROUND = [
+  [5, '보이는 것', '주변을 둘러보며 눈에 보이는 것 다섯 가지를 찾아보세요. 마음속으로 이름만 불러도 돼요.'],
+  [4, '만져지는 것', '옷감, 의자, 바닥처럼 몸에 닿는 것 네 가지를 느껴 보세요.'],
+  [3, '들리는 것', '가까운 소리와 먼 소리, 세 가지에 귀 기울여 보세요.'],
+  [2, '냄새', '냄새 두 가지를 찾아보세요. 잘 모르겠으면 좋아하는 냄새를 떠올려도 돼요.'],
+  [1, '맛', '지금 입안에 느껴지는 맛 하나, 또는 좋아하는 맛 하나를 떠올려 보세요.']
+];
+var BODY = [
+  ['어깨를 귀 쪽으로 천천히 올려요', 5], ['툭 내려놓아요. 힘이 빠지는 느낌을 느껴 보세요', 10],
+  ['한 번 더, 어깨를 천천히 올려요', 5], ['내려놓아요. 어깨가 가벼워지는 걸 느껴 보세요', 10],
+  ['두 손을 꽉 쥐어요', 5], ['천천히 펴요. 손가락 사이로 힘이 풀려요', 10],
+  ['한 번 더, 두 손을 쥐어요', 5], ['펴요. 손바닥을 무릎 위에 편하게 두세요', 10],
+  ['마지막으로 숨을 길게 한 번 내쉬어요', 6]
+];
+var BELLY = ['숨을 들이쉬면 배가 살짝 부풀어요', '내쉬면 배가 천천히 가라앉아요', '숫자는 세지 않아도 돼요. 편한 속도면 충분해요', '다른 생각이 떠오르면, 다시 손에 닿는 느낌으로 돌아와요'];
+var WORDS = [
+  '여기까지 온 것만으로도 충분해요.',
+  '힘든 마음이 드는 건 이상한 일이 아니에요.',
+  '오늘은 아무것도 해결하지 않아도 괜찮아요.',
+  '한 번에 하나씩, 천천히 해도 돼요.',
+  '마음은 파도처럼 올라왔다 내려가기도 해요.',
+  '도움을 청하는 것도 나를 챙기는 방법이에요.',
+  '지금 할 수 있는 만큼만 해도 돼요.',
+  '오늘 하루를 지나온 나에게, 수고했다고 말해 줘요.'
+];
+var restT = [];
+function stopRest() { restT.forEach(clearTimeout); restT.forEach(clearInterval); restT = []; }
+function restSafe(k) {
+  return '<ul class="safe">' + (k !== 'words' && k !== 'ground' ? '<li>어지럽거나 더 불편해지면 바로 멈추고 평소처럼 숨 쉬세요.</li>' : '') +
+    '<li>눈은 떠도 괜찮아요. 언제든 그만둬도 돼요.</li><li>마음을 잠깐 가라앉히는 방법이에요. 치료를 대신하지는 않아요.</li></ul>';
+}
+function restHead(z) { return '<button class="textbtn" id="restmenu">‹ 다른 방법 고르기</button><h2>' + REST[z.k].t + '</h2>'; }
+function renderRest() {
+  var el = $('restbox'), z = state.rest;
+  stopRest();
+  if (!z) {
+    el.innerHTML = '<h2>잠깐 마음 쉬기</h2><p class="lead">지금 맞을 것 같은 것 하나만 골라 보세요. 숨에 집중하는 게 불편하면 다른 방법도 있어요.</p>' +
+      '<div class="pick">' + Object.keys(REST).map(function (k) { return '<button data-rest="' + k + '"><b>' + REST[k].t + '</b><small>' + REST[k].s + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
+      '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요.</p>' + restSafe();
+    return;
   }
-  breathT.push(setTimeout(function () { txt.textContent = '잘했어요. 필요하면 한 번 더 해도 돼요.'; btn.textContent = '닫기'; }, t));
+  if (z.feel) return renderFeel(el, z);
+  if (z.check) {
+    el.innerHTML = '<h2>지금은 어떤가요</h2><p class="lead">' + (z.stopped ? '중간에 멈춰도 괜찮아요. ' : '') + '가장 가까운 걸 골라 주세요.</p>' +
+      '<div class="feel"><button data-feel="better">조금 나아졌어요</button><button data-feel="same">비슷해요</button><button data-feel="hard">아직 많이 힘들어요</button></div>';
+    return;
+  }
+  var k = z.k;
+  if (k === 'breath') {
+    if (!z.len) {
+      el.innerHTML = restHead(z) + '<p class="lead">4초 동안 코로 들이쉬고, 6초 동안 입으로 길게 내쉬어요. 숨을 참는 구간은 없어요.</p>' +
+        '<div class="lens">' + [[3, '30초'], [6, '1분'], [12, '2분']].map(function (x) { return '<button class="ghost" data-len="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' + restSafe(k);
+      return;
+    }
+    el.innerHTML = restHead(z) + '<div class="run"><div class="lung" id="rlung" aria-hidden="true"></div><p id="rtext" aria-live="polite"></p></div>' +
+      '<button class="ghost" id="reststop">그만하기</button>' + restSafe(k);
+    runBreath($('rlung'), $('rtext'), z.len, restT, function () { z.check = true; renderRest(); });
+    return;
+  }
+  if (k === 'belly') {
+    if (!z.go) {
+      el.innerHTML = restHead(z) + '<p class="lead">한 손은 가슴에, 다른 손은 배에 올려요. 앉아도, 누워도 괜찮아요.</p>' +
+        '<button class="primary" id="restgo">시작할게요 (1분)</button>' + restSafe(k);
+      return;
+    }
+    el.innerHTML = restHead(z) + '<div class="run"><div class="bar wide" aria-hidden="true"><i id="rbar" style="width:0"></i></div><p id="rtext" aria-live="polite">' + BELLY[0] + '</p></div>' +
+      '<button class="ghost" id="reststop">그만하기</button>' + restSafe(k);
+    var sec = 0;
+    restT.push(setInterval(function () {
+      sec++; var b = $('rbar'), t = $('rtext'); if (!b) return;
+      b.style.width = Math.min(100, sec / 60 * 100) + '%';
+      if (sec % 8 === 0) t.textContent = BELLY[(sec / 8) % BELLY.length];
+      if (sec >= 60) { z.check = true; renderRest(); }
+    }, 1000));
+    return;
+  }
+  if (k === 'ground') {
+    var i = z.i || 0;
+    if (z.i == null) {
+      el.innerHTML = restHead(z) + '<p class="lead">지금 여기 있는 것에 주의를 옮겨 보는 방법이에요. 눈은 떠 둔 채로 해요. 다 못 찾아도 괜찮아요.</p>' +
+        '<button class="primary" id="restgo">시작할게요</button>' + restSafe(k);
+      return;
+    }
+    var g = GROUND[i];
+    el.innerHTML = restHead(z) + '<div class="bar" aria-hidden="true"><i style="width:' + ((i + 1) / GROUND.length * 100) + '%"></i></div>' +
+      '<div class="step"><strong class="big">' + g[0] + '</strong><h3>' + g[1] + '</h3><p>' + g[2] + '</p></div>' +
+      '<div class="two"><button class="ghost" id="restprev">' + (i ? '이전' : '처음 설명') + '</button><button class="primary" id="restnext">' + (i < GROUND.length - 1 ? '다음' : '다 했어요') + '</button></div>' + restSafe(k);
+    return;
+  }
+  if (k === 'body') {
+    if (!z.go) {
+      el.innerHTML = restHead(z) + '<p class="lead">앉은 자리에서 할 수 있어요. 아프거나 불편한 곳이 있으면 그 동작은 건너뛰어요.</p>' +
+        '<button class="primary" id="restgo">시작할게요 (1분)</button>' + restSafe(k);
+      return;
+    }
+    el.innerHTML = restHead(z) + '<div class="run"><strong class="big" id="rsec" aria-hidden="true"></strong><p id="rtext" aria-live="polite"></p></div>' +
+      '<button class="ghost" id="reststop">그만하기</button>' + restSafe(k);
+    var s = 0, left = 0;
+    var nextBody = function () {
+      if (s >= BODY.length) { z.check = true; return renderRest(); }
+      $('rtext').textContent = BODY[s][0]; left = BODY[s][1]; $('rsec').textContent = left; s++;
+    };
+    nextBody();
+    restT.push(setInterval(function () { if (!$('rsec')) return; left--; if (left <= 0) nextBody(); else $('rsec').textContent = left; }, 1000));
+    return;
+  }
+  if (k === 'words') {
+    var w = z.i || 0;
+    el.innerHTML = restHead(z) + '<p class="lead">마음에 닿는 문장이 있으면 잠깐 머물러도 돼요.</p>' +
+      '<div class="phrase" aria-live="polite"><p>' + WORDS[w] + '</p><span>' + (w + 1) + ' / ' + WORDS.length + '</span></div>' +
+      '<div class="two"><button class="ghost" id="restprev"' + (w ? '' : ' disabled') + '>이전</button><button class="primary" id="restnext">' + (w < WORDS.length - 1 ? '다음' : '다 봤어요') + '</button></div>' +
+      '<button class="textbtn" id="reststop">이제 그만 볼래요</button>' + restSafe(k);
+  }
+}
+function renderFeel(el, z) {
+  var nx = REST_NEXT[z.k];
+  if (z.feel === 'better') {
+    el.innerHTML = '<h2>다행이에요</h2><p class="lead">필요할 때 언제든 다시 와도 돼요.</p>' +
+      '<button class="ghost" id="restmenu">다른 방법도 둘러보기</button><button class="ghost" data-go="home">처음으로</button>';
+  } else if (z.feel === 'same') {
+    el.innerHTML = '<h2>그럴 수 있어요</h2><p class="lead">한 번에 달라지지 않는 날도 있어요. 다른 방법이 더 맞을 수도 있어요.</p>' +
+      '<button class="primary" data-rest="' + nx + '">' + REST[nx].t + ' 해 보기</button><button class="ghost" id="restmenu">다른 방법 고르기</button>' +
+      '<button class="ghost" id="tomap">가까운 상담기관 보기</button>';
+  } else {
+    el.innerHTML = '<div class="help"><p>많이 힘들다면 혼자 견디지 않아도 돼요. 지금 전화하면 24시간 이야기할 수 있어요.</p><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a></div>' +
+      '<p class="lead">전화가 부담스러우면, 가까운 곳에서 직접 이야기할 수 있는 기관도 있어요.</p>' +
+      '<button class="primary" id="tomap">가까운 기관 보기</button><button class="ghost" id="tofree">무료 공공 상담기관만 보기</button>' +
+      '<p class="note">청소년이라면 <a href="tel:1388">1388 청소년 상담전화</a>에서도 이야기할 수 있어요.</p>' +
+      '<button class="textbtn" id="restmenu">‹ 다른 방법 고르기</button>';
+  }
 }
 
 /* ───────── PC에서 전화 버튼: 바로 걸리지 않으니 번호를 복사하고 알려 준다 ───────── */
@@ -501,9 +659,10 @@ document.addEventListener('click', function (e) {
 }, true);
 
 /* ───────── 화면 전환 ───────── */
-var VIEWS = ['home', 'map', 'check', 'facts', 'guide'];
+var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide'];
 function go(v) {
   if (state.view !== v || !go.done) hit('view:' + v); go.done = true;
+  if (state.view === 'rest' && v !== 'rest') { stopRest(); state.rest = null; }
   state.view = v;
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
   document.querySelectorAll('[data-go]').forEach(function (b) { if (b.tagName === 'BUTTON') { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); } });
@@ -512,8 +671,9 @@ function go(v) {
     setTimeout(function () { if (!K.map && K.ready) createMap(); else if (K.map) { K.map.relayout(); if (K.needFit) drawMap(true); } }, 30);
   }
   if (v === 'check') renderCheck();
+  if (v === 'rest') { renderRest(); $('v-rest').scrollTop = 0; }
   if (v === 'facts') {
-    if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('facts').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
+    if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('factsbox').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
     renderFacts();
   }
   try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
@@ -540,7 +700,22 @@ document.addEventListener('click', function (e) {
   if (b.id === 'tofree' || b.id === 'factsfree') return showFreeOnMap();
   if (b.id === 'tofacts') return go('facts');
   if (b.id === 'toguide') return go('guide');
-  if (b.id === 'tobreath') { go('home'); var bb = $('breathbtn'); if (bb.getAttribute('aria-expanded') !== 'true') breathe(); setTimeout(function () { bb.scrollIntoView({ block: 'center' }); }, 50); return; }
+  if (b.id === 'tobreath') { go('rest'); return; }
+  // 마음 쉬기
+  var rz = state.rest, restDraw = function () { renderRest(); var r = $('restbox'); var f = r && r.querySelector('h2'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); } $('v-rest').scrollTop = 0; };
+  if (b.dataset.rest) { if (state.view !== 'rest') go('rest'); state.rest = { k: b.dataset.rest }; return restDraw(); }
+  if (b.id === 'restmenu') { state.rest = null; return restDraw(); }
+  if (!rz) return;
+  if (b.dataset.len) { rz.len = +b.dataset.len; return restDraw(); }
+  if (b.id === 'restgo') { if (rz.k === 'ground') rz.i = 0; else rz.go = true; return restDraw(); }
+  if (b.id === 'reststop') { rz.check = true; rz.stopped = rz.k !== 'words'; return restDraw(); }
+  if (b.id === 'restnext') {
+    var lim = rz.k === 'ground' ? GROUND.length : WORDS.length;
+    if ((rz.i || 0) < lim - 1) rz.i = (rz.i || 0) + 1; else rz.check = true;
+    return restDraw();
+  }
+  if (b.id === 'restprev') { if (rz.k === 'ground' && !rz.i) rz.i = null; else rz.i = Math.max(0, (rz.i || 0) - 1); return restDraw(); }
+  if (b.dataset.feel) { rz.feel = b.dataset.feel; return restDraw(); }
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'sido' && e.target.value !== '') {

@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232B6650'/%3E%3Cpath d='M14 23c3-1 4-3 4-6a2.6 2.6 0 1 0-2.6 2.6' fill='none' stroke='%23E59A5A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=202611171334">
+<link rel="stylesheet" href="assets/style.css?v=202611171500">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -19,7 +19,7 @@
   <header class="top">
     <a class="brand" href="#home" data-go="home" aria-label="마음쉼표 처음 화면">마음쉼표<span class="comma" aria-hidden="true">,</span></a>
     <nav class="nav" aria-label="주 메뉴">
-      <button data-go="home">처음</button><button data-go="map">기관 찾기</button><button data-go="check">마음 살펴보기</button><button data-go="facts">마음 통계</button><button data-go="guide">병원이 처음이라면</button>
+      <button data-go="home">처음</button><button data-go="map">기관 찾기</button><button data-go="check">마음 살펴보기</button><button data-go="rest">마음 쉬기</button><button data-go="facts">마음 통계</button><button data-go="guide">병원이 처음이라면</button>
     </nav>
   </header>
 
@@ -37,14 +37,16 @@
         <h1 class="hello">잠깐 쉬어 가도<br>괜찮아요<span class="comma" aria-hidden="true">,</span></h1>
         <p class="lead">가입 없이, 이름도 남지 않아요. 지금 필요한 것 하나만 골라 보세요.</p>
         <ul class="ways">
-          <li><button data-go="map"><b>가까운 병원·상담기관 찾기</b><small id="cnt">정신건강의학과와 무료 공공 상담기관</small><i aria-hidden="true">›</i></button></li>
+          <li><button data-go="map"><b>가까운 병원·상담기관 찾기</b><small id="cnt">정신건강의학과, 정신건강복지센터, 상담기관</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="check"><b>내 마음 살펴보기</b><small>우울·불안 자가검진, 1~2분, 무료</small><i aria-hidden="true">›</i></button></li>
+          <li><button data-go="rest"><b>잠깐 마음 쉬기</b><small>숨 고르기, 감각으로 돌아오기, 안심 문구</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="guide"><b>병원이 처음이라 걱정돼요</b><small>비용, 기록, 준비할 것</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="facts"><b>나만 이런 걸까요</b><small>숫자로 보는 우울과 불안</small><i aria-hidden="true">›</i></button></li>
         </ul>
         <div class="breath">
           <button class="ghost" id="breathbtn" aria-expanded="false">30초 숨 고르기</button>
           <div class="breathbox" id="breathbox" hidden><div class="lung" id="lung" aria-hidden="true"></div><p id="breathtext" aria-live="polite"></p></div>
+          <button class="textbtn" data-go="rest">숨 말고 다른 방법도 있어요 ›</button>
         </div>
       </div>
     </section>
@@ -54,16 +56,19 @@
       <div class="mapwrap">
         <div id="kmap" class="kmap" aria-hidden="true"></div>
         <button class="research" id="research" hidden>이 위치에서 다시 찾기</button>
-        <div class="legend" aria-hidden="true"><span><b class="c"></b>의원·병원</span><span><b class="p"></b>공공 상담기관</span></div>
+        <div class="legend" aria-hidden="true"><span><b class="c"></b>의원·병원</span><span><b class="p"></b>상담·지원기관</span></div>
       </div>
       <div class="panel" id="panel"></div>
     </section>
 
     <!-- 자가검진 -->
-    <section class="view page" id="v-check" aria-label="마음 살펴보기"><div class="col" id="check"></div></section>
+    <section class="view page" id="v-check" aria-label="마음 살펴보기"><div class="col" id="checkbox"></div></section>
+
+    <!-- 마음 쉬기 -->
+    <section class="view page" id="v-rest" aria-label="마음 쉬기"><div class="col rest" id="restbox"></div></section>
 
     <!-- 통계 -->
-    <section class="view page" id="v-facts" aria-label="마음 통계"><div class="col wide" id="facts"></div></section>
+    <section class="view page" id="v-facts" aria-label="마음 통계"><div class="col wide" id="factsbox"></div></section>
 
     <!-- 처음이라면 -->
     <section class="view page" id="v-guide" aria-label="처음이라면">
@@ -80,6 +85,12 @@
         <section><h3>무엇을 준비하면 좋을까요</h3>
           <ul><li>신분증</li><li>언제부터, 어떤 점이 힘든지 적은 짧은 메모</li><li>지금 먹고 있는 약 이름</li>
           <li>첫 진료는 예약제인 곳이 많아요. 가기 전에 전화로 확인해 보세요.</li></ul></section>
+        <section><h3>예약 전화할 때 물어보면 좋은 것</h3>
+          <ul><li>"처음인데요, 진료(상담)를 받을 수 있을까요?"</li>
+          <li>가장 빠른 예약이 언제인지, 얼마나 기다려야 하는지</li>
+          <li>처음 가면 비용이 어느 정도인지</li>
+          <li>따로 준비해 갈 것이 있는지</li>
+          <li>정해진 말이 없어도 괜찮아요. "어디서부터 말해야 할지 모르겠어요"라고 해도 돼요.</li></ul></section>
         <section><h3>청소년이라면</h3>
           <ul><li><a href="tel:1388">1388 청소년 상담전화</a>에서 고민을 먼저 이야기해 볼 수 있어요.</li></ul></section>
         <p class="note">이 안내는 정신건강 전문가와 법률 검토를 거치기 전 초안이에요.</p>
@@ -88,10 +99,10 @@
   </main>
 
   <nav class="tabs" aria-label="주 메뉴">
-    <button data-go="home">처음</button><button data-go="map">찾기</button><button data-go="check">살펴보기</button><button data-go="facts">통계</button><button data-go="guide">안내</button>
+    <button data-go="home">처음</button><button data-go="map">찾기</button><button data-go="check">살펴보기</button><button data-go="rest">쉬기</button><button data-go="facts">통계</button>
   </nav>
 </div>
-<script src="assets/config.js?v=202611171334"></script>
-<script src="assets/app.js?v=202611171334"></script>
+<script src="assets/config.js?v=202611171500"></script>
+<script src="assets/app.js?v=202611171500"></script>
 </body>
 </html>

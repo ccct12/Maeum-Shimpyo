@@ -232,7 +232,7 @@ function clearWebCache() { CacheService.getScriptCache().removeAll(['facilities_
  */
 var HIT_COL = {
   visit: '방문', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
-  'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
+  'view:rest': '마음 쉬기', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
 };
 function hit_(ev) {
   var name = HIT_COL[ev];
