@@ -153,7 +153,7 @@ function checkCoords() {
  * 응답이 커서 90KB씩 나눠 1시간 캐시한다. 좌표 갱신(fillCoords) 때 캐시를 비운다.
  */
 function doGet(e) {
-  if (e && e.parameter.type === 'hit') return hit_(e.parameter.e);
+  if (e && e.parameter.type === 'hit') return hit_(e.parameter);
   var type = (e && e.parameter.type) === 'stats' ? 'stats' : 'facilities';
   var body = cacheGet_(type);
   if (!body) {
@@ -272,36 +272,62 @@ function clip_(v, n) { return String(v == null ? '' : v).replace(/[\u0000-\u0008
 function safe_(v) { return /^[=+\-@]/.test(v) ? "'" + v : v; }
 
 /* ───────── 방문자 집계 ─────────
- * 사이트가 ?type=hit&e=<이벤트> 로 부른다. 날짜별 횟수만 센다.
+ * 사이트가 ?type=hit&e=<이벤트> 로 부른다. 모두 '날짜별·시간대별 횟수'로만 센다.
  * IP·기기 정보·위치·자가검진 응답은 받지도 저장하지도 않는다.
+ * - open  : 페이지를 연 횟수(접속). 시간대별로도 센다(방문_시간대 탭)
+ * - visit : 기기별 하루 첫 접속(순 방문자). 함께 오는 값은 분류 이름뿐이다
+ *           nw=1/0 (이 기기에서 처음/다시), dv=pc/m (PC/모바일), src=direct/kakao/search/sns/etc (들어온 경로)
+ * 열이 없으면 '방문_기록' 1행 끝에 자동으로 추가한다.
  */
 var HIT_COL = {
-  visit: '방문', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
-  'view:rest': '마음 쉬기', 'view:ask': '알려 주세요', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
+  visit: '방문', open: '접속', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
+  'view:rest': '마음 쉬기', 'view:ask': '알려 주세요', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면',
+  tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
 };
-function hit_(ev) {
-  var name = HIT_COL[ev];
-  if (name) {
-    var lock = LockService.getScriptLock();
-    if (lock.tryLock(3000)) {
-      try {
-        var sh = SpreadsheetApp.getActive().getSheetByName('방문_기록');
-        if (sh) {
-          var head = sh.getRange(1, 1, 1, 11).getValues()[0], c = head.indexOf(name), cv = head.indexOf('화면 보기');
-          var today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
-          var dates = sh.getRange('A2:A').getDisplayValues().map(function (r) { return r[0]; });
-          var row = dates.indexOf(today) + 2;
-          if (row < 2) {
-            row = dates.indexOf('') + 2; if (row < 2) row = dates.length + 2;
-            sh.getRange(row, 1, 1, 11).setValues([[today, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]);
-          }
-          if (c >= 0) { var cell = sh.getRange(row, c + 1); cell.setValue((+cell.getValue() || 0) + 1); }
-          if (ev.indexOf('view:') === 0 && cv >= 0) { var v = sh.getRange(row, cv + 1); v.setValue((+v.getValue() || 0) + 1); }
-        }
-      } finally { lock.releaseLock(); }
-    }
+var HIT_DV = { pc: 'PC', m: '모바일' };
+var HIT_SRC = { direct: '유입_직접', kakao: '유입_카카오톡', search: '유입_검색', sns: '유입_SNS', etc: '유입_기타' };
+
+function hit_(p) {
+  p = p || {};
+  var ev = p.e, name = HIT_COL[ev], add = {};
+  if (!name) return ContentService.createTextOutput('ok');
+  add[name] = 1;
+  if (ev.indexOf('view:') === 0) add['화면 보기'] = 1;
+  if (ev === 'visit') {
+    if (p.nw === '1') add['신규'] = 1; else if (p.nw === '0') add['재방문'] = 1;
+    if (HIT_DV[p.dv]) add[HIT_DV[p.dv]] = 1;
+    if (HIT_SRC[p.src]) add[HIT_SRC[p.src]] = 1;
+  }
+  var lock = LockService.getScriptLock();
+  if (lock.tryLock(3000)) {
+    try {
+      var now = new Date(), today = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');
+      bumpRow_('방문_기록', today, add);
+      if (ev === 'open') { var h = {}; h[Utilities.formatDate(now, 'Asia/Seoul', 'H') + '시'] = 1; bumpRow_('방문_시간대', today, h); }
+    } finally { lock.releaseLock(); }
   }
   return ContentService.createTextOutput('ok');
+}
+// 날짜 행을 찾아(없으면 만들어) 지정한 열들을 한 번에 올린다. 열이 없으면 머리글 끝에 추가.
+function bumpRow_(tab, day, add) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(tab);
+  if (!sh) return;
+  var lastCol = sh.getLastColumn(), head = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+  Object.keys(add).forEach(function (k) {
+    if (head.indexOf(k) < 0) {
+      if (head.length >= sh.getMaxColumns()) sh.insertColumnsAfter(sh.getMaxColumns(), 1);
+      sh.getRange(1, head.length + 1).setValue(k); head.push(k);
+    }
+  });
+  var n = Math.max(sh.getLastRow() - 1, 1), dates = sh.getRange(2, 1, n, 1).getDisplayValues().map(function (r) { return r[0]; });
+  var row = dates.indexOf(day) + 2, vals;
+  if (row < 2) {
+    row = dates.indexOf('') + 2; if (row < 2) row = dates.length + 2;
+    vals = head.map(function (h, i) { return i ? 0 : day; });
+    sh.getRange(row, 1).setNumberFormat('@');
+  } else vals = sh.getRange(row, 1, 1, head.length).getValues()[0];
+  Object.keys(add).forEach(function (k) { var c = head.indexOf(k); vals[c] = (+vals[c] || 0) + add[k]; });
+  sh.getRange(row, 1, 1, head.length).setValues([vals]);
 }
 
 /* ───────── 도우미 ───────── */

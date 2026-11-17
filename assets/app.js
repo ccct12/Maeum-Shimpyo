@@ -240,7 +240,7 @@ function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
     '<span>기관 정보: 건강보험심사평가원 병원정보서비스(2026), 전국건강증진센터표준데이터(각 지자체), 국립정신건강센터 정신건강 관련기관 정보(2022), 전국민 마음투자 지원사업 제공기관 목록(2024). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
-    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜별 횟수만 세요.</span>' +
+    '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜·시간대별 횟수와 PC·모바일, 들어온 경로 종류(검색·카카오톡 등)만 세요.</span>' +
     '<button class="textbtn" data-go="ask">정보가 틀렸거나 바라는 점이 있다면 알려 주세요 ›</button></div>';
 }
 function detailHTML(f, n) {
@@ -702,15 +702,30 @@ document.addEventListener('click', function (e) {
   else toast('휴대폰으로 ' + shown + '에 걸어 주세요.');
 });
 
-/* ───────── 방문 집계: 날짜별 횟수만. 누가·어디서 왔는지는 보내지 않는다 ───────── */
-function hit(ev) {
+/* ───────── 방문 집계: 날짜별·시간대별 횟수만 ─────────
+ * 보내는 것은 이벤트 이름과 분류 이름뿐이다(처음/다시, PC/모바일, 들어온 경로 종류).
+ * 누구인지 알 수 있는 값(IP를 따로 모으거나, 기기 ID, 위치, 검색어, 자가검진 응답)은 보내지 않는다. */
+function hit(ev, extra) {
   if (!CFG.DATA_URL || /^(localhost|127\.)/.test(location.hostname)) return;
-  try { fetch(CFG.DATA_URL + '?type=hit&e=' + encodeURIComponent(ev), { mode: 'no-cors', keepalive: true }); } catch (e) {}
+  var q = '?type=hit&e=' + encodeURIComponent(ev);
+  if (extra) Object.keys(extra).forEach(function (k) { q += '&' + k + '=' + encodeURIComponent(extra[k]); });
+  try { fetch(CFG.DATA_URL + q, { mode: 'no-cors', keepalive: true }); } catch (e) {}
+}
+function srcKind() {
+  if (IN_KAKAO) return 'kakao';
+  var r = ''; try { r = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
+  if (!r || r === location.hostname) return 'direct';
+  if (/kakao/.test(r)) return 'kakao';
+  if (/instagram|facebook|(^|\.)t\.co$|twitter|(^|\.)x\.com$|threads|band\.us|youtube|tiktok|blog\.naver|cafe\.naver|blog\.daum|cafe\.daum|tistory/.test(r)) return 'sns';
+  if (/google|naver|daum|bing|zum|yahoo|duckduckgo|ecosia/.test(r)) return 'search';
+  return 'etc';
 }
 function hitVisit() {
-  var d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), k = 'ms_day';
-  try { if (localStorage.getItem(k) === d) return; localStorage.setItem(k, d); } catch (e) {}
-  hit('visit');
+  hit('open');                                         // 페이지를 연 횟수
+  var d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), seen = null;
+  try { if (localStorage.getItem('ms_day') === d) return; localStorage.setItem('ms_day', d); seen = localStorage.getItem('ms_seen'); localStorage.setItem('ms_seen', '1'); } catch (e) {}
+  var mob = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  hit('visit', { nw: seen ? '0' : '1', dv: mob ? 'm' : 'pc', src: srcKind() });   // 이 기기의 하루 첫 접속
 }
 document.addEventListener('click', function (e) {
   var a = e.target.closest('a[href]'); if (!a) return;
