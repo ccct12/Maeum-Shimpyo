@@ -182,16 +182,17 @@ function hours_() {
   h.forEach(function (k, i) { col[k] = i; });
   var DAY = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일' }, out = {};
   function pair(r, a, b) {
-    var s = r[col[a]], e = r[col[b]];
-    return /^\d{1,2}:\d{2}$/.test(s) && /^\d{1,2}:\d{2}$/.test(e) ? [pad_(s), pad_(e)] : null;
+    var s = String(r[col[a]] || '').trim(), e = String(r[col[b]] || '').trim();
+    if (/^\d{1,2}:\d{2}$/.test(s) && /^\d{1,2}:\d{2}$/.test(e)) return [pad_(s), pad_(e)];
+    return (!s && !e) ? '?' : null;            // 둘 다 비어 있으면 '모름', '휴진' 등은 쉬는 날
   }
   v.forEach(function (r) {
     var id = r[col['기관ID']]; if (!id) return;
     var o = {}, any = false;
-    Object.keys(DAY).forEach(function (d) { o[d] = pair(r, DAY[d] + '_시작', DAY[d] + '_종료'); if (o[d]) any = true; });
+    Object.keys(DAY).forEach(function (d) { o[d] = pair(r, DAY[d] + '_시작', DAY[d] + '_종료'); if (Array.isArray(o[d])) any = true; });
     if (!any) return;
-    o.lunch = pair(r, '평일점심_시작', '평일점심_종료');
-    o.lunchSat = pair(r, '토점심_시작', '토점심_종료');
+    o.lunch = pair(r, '평일점심_시작', '평일점심_종료'); if (!Array.isArray(o.lunch)) o.lunch = null;
+    o.lunchSat = pair(r, '토점심_시작', '토점심_종료'); if (!Array.isArray(o.lunchSat)) o.lunchSat = null;
     o.holOff = String(r[col['공휴일휴진']]).toUpperCase() === 'TRUE';
     if (r[col['접수안내']]) o.note = r[col['접수안내']];
     out[id] = o;

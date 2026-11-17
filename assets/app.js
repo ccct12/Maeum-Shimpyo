@@ -81,6 +81,7 @@ function status(f, n) {
   if (!f.h) return { k: 'unknown', t: '운영시간 정보 없음' };
   var d = DAYS[n[0]], h = f.h[d], t = n[1], word = f.c === 'p' ? '운영' : '진료';
   if (HOLIDAYS[todayKST()]) return f.h.holOff ? { k: 'off', t: '오늘은 공휴일 휴무' } : { k: 'holiday', t: '공휴일이라 운영 여부를 전화로 확인해 주세요' };
+  if (h === '?') return { k: 'unknown', t: '오늘 운영시간은 전화로 확인해 주세요' };
   if (!h) return { k: 'off', t: '오늘 쉬는 날' };
   if (t < mins(h[0])) return { k: 'before', t: word + ' 전 · ' + h[0] + ' 시작' };
   if (t >= mins(h[1])) return { k: 'closed', t: '오늘 ' + word + ' 끝' };
@@ -90,7 +91,7 @@ function status(f, n) {
   if (left <= 30) return { k: 'soon', t: '곧 ' + word + ' 끝나요 · ' + h[1] + '까지' };
   return { k: 'open', t: word + ' 중 · ' + h[1] + '까지' };
 }
-function isNight(f) { return !!f.h && ['mon', 'tue', 'wed', 'thu', 'fri'].some(function (d) { var h = f.h[d]; return h && mins(h[1]) >= 1200; }); }
+function isNight(f) { return !!f.h && ['mon', 'tue', 'wed', 'thu', 'fri'].some(function (d) { var h = f.h[d]; return Array.isArray(h) && mins(h[1]) >= 1200; }); }
 function isFree(f) { return f.c === 'p' && f.cost === '무료'; }
 
 /* ───────── 거리 ───────── */
@@ -108,7 +109,7 @@ function visible() {
     if (q && (f.n + String(f.a || '')).replace(/\s/g, '').indexOf(q) < 0) return false;
     if (F.open) { var sk = status(f, n).k; if (sk !== 'open' && sk !== 'soon') return false; }
     if (F.night && !isNight(f)) return false;
-    if (F.sat && !(f.h && f.h.sat)) return false;
+    if (F.sat && !(f.h && Array.isArray(f.h.sat))) return false;
     if (state.kind === 'm' && f.c !== 'm') return false;
     if (state.kind === 'p' && f.c !== 'p') return false;
     if (F.free && !isFree(f)) return false;
@@ -222,7 +223,7 @@ function detailHTML(f, n) {
   if (f.h) {
     ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].forEach(function (d) {
       var h = f.h[d], today = DAYS[n[0]] === d;
-      rows += '<div' + (today ? ' class="today"' : '') + '><span>' + DAYKO[d] + '요일' + (today ? ' (오늘)' : '') + '</span><span>' + (h ? h[0] + ' – ' + h[1] : '쉬는 날') + '</span></div>';
+      rows += '<div' + (today ? ' class="today"' : '') + '><span>' + DAYKO[d] + '요일' + (today ? ' (오늘)' : '') + '</span><span>' + (h === '?' ? '정보 없음' : h ? h[0] + ' – ' + h[1] : '쉬는 날') + '</span></div>';
     });
     if (f.h.lunch) rows += '<div><span>평일 점심</span><span>' + f.h.lunch[0] + ' – ' + f.h.lunch[1] + '</span></div>';
     if (f.h.lunchSat) rows += '<div><span>토요일 점심</span><span>' + f.h.lunchSat[0] + ' – ' + f.h.lunchSat[1] + '</span></div>';
