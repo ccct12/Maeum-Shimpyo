@@ -344,3 +344,28 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
   .sprout:hover{background:rgba(127,140,133,.10)}
   .where select:hover,.search:hover{border-color:var(--green)}
 }
+
+/* 병원이 처음이라면: 4단계 흐름 (넓은 화면은 그림, 좁은 화면은 세로 목록) */
+.flow .flowsvg{width:100%;height:auto;display:none}
+.flowlist{list-style:none;margin:0;padding:0;counter-reset:fv;display:flex;flex-direction:column;gap:0}
+.flowlist li{counter-increment:fv;display:grid;grid-template-columns:30px 1fr;gap:0 12px;padding:10px 0;position:relative}
+.flowlist li::before{content:counter(fv);grid-row:1/3;width:26px;height:26px;border-radius:50%;background:var(--green);color:var(--on-green);font:700 13px/26px var(--f-body);text-align:center}
+.flowlist li:last-child::before{background:var(--apricot);color:#fff}
+.flowlist li:not(:last-child)::after{content:"";position:absolute;left:12.5px;top:40px;bottom:-6px;border-left:2px dashed color-mix(in srgb,var(--green) 45%,transparent)}
+.flowlist b{font-weight:600}
+.flowlist span{grid-column:2;font-size:14px;color:var(--muted)}
+@media (min-width:960px){.flow{width:880px;margin-left:-160px}.flow h3,.flow .caution{padding-left:16px}.flow .flowsvg{display:block}.flowlist{display:none}}
+@media (prefers-color-scheme:dark){
+  .flowsvg .fv-card{fill:var(--surface);stroke:var(--line)}
+  .flowsvg .fv-badge,.flowsvg .fv-icon-soft{fill:var(--green)}
+  .flowsvg .fv-icon-soft{fill-opacity:.18}
+  .flowsvg .fv-icon-stroke,.flowsvg .fv-icon-soft{stroke:var(--green)}
+  .flowsvg .fv-badge-num{fill:var(--on-green)}
+  .flowsvg .fv-step-title{fill:var(--ink)}
+  .flowsvg .fv-step-sub{fill:var(--muted)}
+  .flowsvg .fv-arrow-line,.flowsvg .fv-arrow-head{stroke:var(--muted)}
+}
+
+/* 검색 결과 없음 */
+.empty.withart{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;border-style:solid;border-color:transparent;background:var(--surface)}
+.emptyart{width:120px;height:auto;color:var(--green)}

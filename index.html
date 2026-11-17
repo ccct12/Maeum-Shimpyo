@@ -8,10 +8,18 @@
 <meta name="theme-color" content="#F1F4EF">
 <meta property="og:title" content="마음쉼표">
 <meta property="og:description" content="잠깐 쉬어 가도 괜찮아요. 가까운 마음 병원과 무료 상담기관을 찾아보세요.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ccct12.github.io/Maeum-Shimpyo/">
+<meta property="og:image" content="https://ccct12.github.io/Maeum-Shimpyo/assets/img/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="마음쉼표 — 잠시 숨을 고르고, 내 곁의 병원·상담소와 마음 돌봄을 찾는 곳">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232B6650'/%3E%3Cpath d='M14 23c3-1 4-3 4-6a2.6 2.6 0 1 0-2.6 2.6' fill='none' stroke='%23E59A5A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=202611171745">
+<link rel="stylesheet" href="assets/style.css?v=202611171830">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -83,6 +91,102 @@
       <div class="col guide">
         <h2>처음 가 보는 분께</h2>
         <p class="lead">처음엔 누구나 망설여요. 자주 묻는 세 가지를 먼저 정리했어요.</p>
+        <section class="flow"><h3>병원에 가면 이렇게 진행돼요</h3>
+          <svg class="flowsvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 220" role="img" aria-labelledby="flow-title flow-desc">
+  <title id="flow-title">병원이 처음이라면 4단계 초진 흐름도</title>
+  <desc id="flow-desc">1단계 예약 전화, 2단계 접수 및 설문, 3단계 첫 상담, 4단계 다음 일정 안내</desc>
+  <defs>
+    <style>
+      .fv-card { fill: #F6F4EE; stroke: rgba(43, 102, 80, 0.22); stroke-width: 1.5; }
+      .fv-badge { fill: #2B6650; }
+      .fv-badge-accent { fill: #E59A5A; }
+      .fv-badge-num { fill: #F6F4EE; font-family: "Noto Sans CJK KR", "Apple SD Gothic Neo", sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .fv-icon-stroke { fill: none; stroke: #2B6650; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .fv-icon-soft { fill: rgba(43, 102, 80, 0.12); stroke: #2B6650; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .fv-accent-soft { fill: rgba(229, 154, 90, 0.24); }
+      .fv-accent-dot { fill: #E59A5A; }
+      .fv-step-title { fill: #1B2E25; font-family: "Noto Sans CJK KR", "Apple SD Gothic Neo", sans-serif; font-size: 17px; font-weight: 700; text-anchor: middle; }
+      .fv-step-sub { fill: #46584E; font-family: "Noto Sans CJK KR", "Apple SD Gothic Neo", sans-serif; font-size: 13px; font-weight: 400; text-anchor: middle; }
+      .fv-arrow-line { fill: none; stroke: rgba(43, 102, 80, 0.45); stroke-width: 2; stroke-dasharray: 4 4; stroke-linecap: round; }
+      .fv-arrow-head { fill: none; stroke: rgba(43, 102, 80, 0.65); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <!-- Step 1: 예약 전화 -->
+  <g transform="translate(16, 18)">
+    <rect class="fv-card" x="0" y="0" width="184" height="184" rx="20"/>
+    <circle class="fv-badge" cx="28" cy="28" r="13"/>
+    <text class="fv-badge-num" x="28" y="28">1</text>
+    <circle class="fv-accent-soft" cx="104" cy="64" r="22"/>
+    <path class="fv-icon-stroke" d="M79 62 C79 58, 82 55, 86 55 L90 55 C92 55, 93 57, 94 59 L95 64 C95 66, 94 67, 92 68 L90 70 C92 75, 96 79, 101 81 L103 79 C104 77, 105 76, 107 76 L112 77 C114 78, 116 79, 116 81 L116 85 C116 89, 113 92, 109 92 C92 92, 79 79, 79 62 Z"/>
+    <text class="fv-step-title" x="92" y="130">예약 전화</text>
+    <text class="fv-step-sub" x="92" y="154">초진 가능 여부와</text>
+    <text class="fv-step-sub" x="92" y="172">방문 시간 확인</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path class="fv-arrow-line" d="M206 110 L230 110"/>
+  <path class="fv-arrow-head" d="M225 105 L231 110 L225 115"/>
+
+  <!-- Step 2: 접수 -->
+  <g transform="translate(237, 18)">
+    <rect class="fv-card" x="0" y="0" width="184" height="184" rx="20"/>
+    <circle class="fv-badge" cx="28" cy="28" r="13"/>
+    <text class="fv-badge-num" x="28" y="28">2</text>
+    <circle class="fv-accent-soft" cx="106" cy="64" r="22"/>
+    <rect class="fv-icon-soft" x="75" y="52" width="34" height="42" rx="6"/>
+    <path class="fv-icon-stroke" d="M85 48 H99"/>
+    <path class="fv-icon-stroke" d="M83 66 H101 M83 75 H101 M83 84 H95"/>
+    <text class="fv-step-title" x="92" y="130">접수</text>
+    <text class="fv-step-sub" x="92" y="154">신분증 확인 후</text>
+    <text class="fv-step-sub" x="92" y="172">간단한 문진표 작성</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path class="fv-arrow-line" d="M427 110 L451 110"/>
+  <path class="fv-arrow-head" d="M446 105 L452 110 L446 115"/>
+
+  <!-- Step 3: 첫 상담 -->
+  <g transform="translate(458, 18)">
+    <rect class="fv-card" x="0" y="0" width="184" height="184" rx="20"/>
+    <circle class="fv-badge" cx="28" cy="28" r="13"/>
+    <text class="fv-badge-num" x="28" y="28">3</text>
+    <circle class="fv-accent-soft" cx="106" cy="64" r="22"/>
+    <path class="fv-icon-soft" d="M72 60 C72 54, 77 50, 84 50 H100 C107 50, 112 54, 112 60 V72 C112 78, 107 82, 100 82 H88 L78 90 V82 C74 80, 72 76, 72 72 Z"/>
+    <circle class="fv-accent-dot" cx="84" cy="66" r="2.2"/>
+    <circle class="fv-accent-dot" cx="92" cy="66" r="2.2"/>
+    <circle class="fv-accent-dot" cx="100" cy="66" r="2.2"/>
+    <text class="fv-step-title" x="92" y="130">첫 상담</text>
+    <text class="fv-step-sub" x="92" y="154">요즘 힘든 점을</text>
+    <text class="fv-step-sub" x="92" y="172">편하게 이야기하기</text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <path class="fv-arrow-line" d="M648 110 L672 110"/>
+  <path class="fv-arrow-head" d="M667 105 L673 110 L667 115"/>
+
+  <!-- Step 4: 다음 일정 -->
+  <g transform="translate(679, 18)">
+    <rect class="fv-card" x="0" y="0" width="184" height="184" rx="20"/>
+    <circle class="fv-badge-accent" cx="28" cy="28" r="13"/>
+    <text class="fv-badge-num" x="28" y="28">4</text>
+    <circle class="fv-accent-soft" cx="105" cy="64" r="22"/>
+    <rect class="fv-icon-soft" x="72" y="54" width="40" height="36" rx="6"/>
+    <path class="fv-icon-stroke" d="M72 64 H112 M83 49 V57 M101 49 V57"/>
+    <path class="fv-icon-stroke" d="M85 77 L90 82 L100 72"/>
+    <text class="fv-step-title" x="92" y="130">다음 일정</text>
+    <text class="fv-step-sub" x="92" y="154">나에게 맞는 방향과</text>
+    <text class="fv-step-sub" x="92" y="172">다음 방문 정하기</text>
+  </g>
+</svg>
+          <ol class="flowlist">
+            <li><b>예약 전화</b><span>초진 가능 여부와 방문 시간 확인</span></li>
+            <li><b>접수</b><span>신분증 확인 후 간단한 문진표 작성</span></li>
+            <li><b>첫 상담</b><span>요즘 힘든 점을 편하게 이야기하기</span></li>
+            <li><b>다음 일정</b><span>나에게 맞는 방향과 다음 방문 정하기</span></li>
+          </ol>
+          <p class="caution">기관마다 순서는 조금씩 달라요.</p>
+        </section>
         <section><h3>비용이 얼마나 들까요</h3>
           <ul><li>정신건강의학과 진료에는 건강보험이 적용돼요.</li>
           <li>금액은 검사를 하는지, 어떤 기관인지에 따라 달라요. 예약 전화 때 "처음 가면 비용이 어느 정도인가요?" 하고 물어봐도 괜찮아요.</li>
@@ -110,7 +214,7 @@
     <button data-go="home">처음</button><button data-go="map">찾기</button><button data-go="check">살펴보기</button><button data-go="rest">쉬기</button><button data-go="facts">통계</button>
   </nav>
 </div>
-<script src="assets/config.js?v=202611171745"></script>
-<script src="assets/app.js?v=202611171745"></script>
+<script src="assets/config.js?v=202611171830"></script>
+<script src="assets/app.js?v=202611171830"></script>
 </body>
 </html>

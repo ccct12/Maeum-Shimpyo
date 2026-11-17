@@ -229,12 +229,13 @@ function renderPanel() {
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
       (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳') + '</p>' +
-    (list.length ? '<ul class="list">' + cards + '</ul>' : '<p class="empty">' + hint + '</p>') +
+    (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
     '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있어요. 몇 년 전 자료가 섞여 있으니 가기 전에 전화로 확인해 주세요.</p>' +
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' +
     footHTML();
 }
+var EMPTY_ART = '<svg class="emptyart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" aria-hidden="true"> <circle cx="100" cy="76" r="56" fill="currentColor" fill-opacity="0.06"/> <circle cx="126" cy="52" r="20" fill="#E59A5A" fill-opacity="0.22"/> <circle cx="126" cy="52" r="10" fill="#E59A5A" fill-opacity="0.52"/> <path d="M44 114 C74 96, 126 96, 156 114" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/> <path d="M100 100 C100 82, 100 70, 100 58" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/> <path d="M100 78 C84 77, 74 66, 76 54 C89 54, 99 63, 100 78 Z" fill="currentColor" fill-opacity="0.14" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"/> <path d="M100 68 C115 66, 125 56, 123 44 C110 45, 101 54, 100 68 Z" fill="currentColor" fill-opacity="0.26" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"/> <circle cx="144" cy="116" r="3" fill="#E59A5A" fill-opacity="0.8"/> </svg>';
 function shortAddr(a) { var t = String(a || '').split(',')[0].replace(/\(.*?\)/g, '').trim().split(/\s+/); return t.slice(1, 5).join(' '); }
 function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
