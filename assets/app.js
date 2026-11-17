@@ -65,16 +65,29 @@ function normalize(f) {
 /* ───────── 시간·상태 (한국 시간) ───────── */
 var DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 var DAYKO = { sun: '일', mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토' };
+// 관공서 공휴일 (인사혁신처·우주항공청 월력요항 기준). 해마다 추가한다.
+var HOLIDAYS = {
+  '2026-01-01':1,'2026-02-16':1,'2026-02-17':1,'2026-02-18':1,'2026-03-01':1,'2026-03-02':1,'2026-05-01':1,'2026-05-05':1,
+  '2026-05-24':1,'2026-05-25':1,'2026-06-03':1,'2026-06-06':1,'2026-07-17':1,'2026-08-15':1,'2026-08-17':1,'2026-09-24':1,
+  '2026-09-25':1,'2026-09-26':1,'2026-10-03':1,'2026-10-05':1,'2026-10-09':1,'2026-12-25':1,
+  '2027-01-01':1,'2027-02-06':1,'2027-02-07':1,'2027-02-08':1,'2027-02-09':1,'2027-03-01':1,'2027-05-01':1,'2027-05-03':1,
+  '2027-05-05':1,'2027-05-13':1,'2027-06-06':1,'2027-07-17':1,'2027-07-19':1,'2027-08-15':1,'2027-08-16':1,'2027-09-14':1,
+  '2027-09-15':1,'2027-09-16':1,'2027-10-03':1,'2027-10-04':1,'2027-10-09':1,'2027-10-11':1,'2027-12-25':1,'2027-12-27':1
+};
+function todayKST() { return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); }
 function mins(s) { return +s.slice(0, 2) * 60 + +s.slice(3, 5); }
 function now() { var k = new Date(Date.now() + 9 * 3600e3); return [k.getUTCDay(), k.getUTCHours() * 60 + k.getUTCMinutes()]; }
 function status(f, n) {
   if (!f.h) return { k: 'unknown', t: '운영시간 정보 없음' };
   var d = DAYS[n[0]], h = f.h[d], t = n[1], word = f.c === 'p' ? '운영' : '진료';
+  if (HOLIDAYS[todayKST()]) return f.h.holOff ? { k: 'off', t: '오늘은 공휴일 휴무' } : { k: 'holiday', t: '공휴일이라 운영 여부를 전화로 확인해 주세요' };
   if (!h) return { k: 'off', t: '오늘 쉬는 날' };
   if (t < mins(h[0])) return { k: 'before', t: word + ' 전 · ' + h[0] + ' 시작' };
   if (t >= mins(h[1])) return { k: 'closed', t: '오늘 ' + word + ' 끝' };
   var l = d === 'sat' ? f.h.lunchSat : (d === 'sun' ? null : f.h.lunch);
   if (l && t >= mins(l[0]) && t < mins(l[1])) return { k: 'lunch', t: '점심시간 · ' + l[1] + ' 다시 시작' };
+  var left = mins(h[1]) - t;
+  if (left <= 30) return { k: 'soon', t: '곧 ' + word + ' 끝나요 · ' + h[1] + '까지' };
   return { k: 'open', t: word + ' 중 · ' + h[1] + '까지' };
 }
 function isNight(f) { return !!f.h && ['mon', 'tue', 'wed', 'thu', 'fri'].some(function (d) { var h = f.h[d]; return h && mins(h[1]) >= 1200; }); }
@@ -92,8 +105,8 @@ function kindLabel(f) { return f.c === 'p' ? f.t + (isFree(f) ? ', 무료' : f.c
 function visible() {
   var n = now(), F = state.filters, q = state.q.replace(/\s/g, '');
   return (state.data || []).filter(function (f) {
-    if (q && f.n.replace(/\s/g, '').indexOf(q) < 0) return false;
-    if (F.open && status(f, n).k !== 'open') return false;
+    if (q && (f.n + String(f.a || '')).replace(/\s/g, '').indexOf(q) < 0) return false;
+    if (F.open) { var sk = status(f, n).k; if (sk !== 'open' && sk !== 'soon') return false; }
     if (F.night && !isNight(f)) return false;
     if (F.sat && !(f.h && f.h.sat)) return false;
     if (state.kind === 'm' && f.c !== 'm') return false;
@@ -189,9 +202,10 @@ function renderPanel() {
     '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요</p>' +
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
-    '<input class="search" id="q" type="search" placeholder="기관 이름으로 찾기" value="' + esc(state.q) + '" aria-label="기관 이름으로 찾기">' +
+    '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
-    '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' : list.length.toLocaleString() + '곳') + '</p>' +
+    '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
+      (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳') + '</p>' +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<p class="empty">' + hint + '</p>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
     '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있고, 공휴일은 반영되지 않았어요. 시간이 안 적힌 곳은 가기 전에 전화로 확인해 주세요.</p>' +
@@ -248,9 +262,9 @@ function afterOrigin(fit) { $('research').hidden = true; state.sel = null; state
 /* ───────── 자가검진 (문항은 공식 한국어판 확인 전 임시 문구) ───────── */
 var OPT = ['전혀 없었어요', '며칠 정도', '절반 넘는 날', '거의 매일'];
 var TESTS = {
-  phq: { name: '우울 살펴보기', sub: 'PHQ-9, 9문항, 2분쯤', q: ['일이나 여가에서 흥미나 즐거움을 거의 느끼지 못했다', '기분이 가라앉거나 우울하거나 희망이 없다고 느꼈다', '잠들기 어렵거나 자주 깼다. 또는 너무 많이 잤다', '피곤하거나 기운이 거의 없었다', '입맛이 없거나 지나치게 많이 먹었다', '내가 실패자 같거나, 나와 가족을 실망시켰다고 느꼈다', '글을 읽거나 TV를 볼 때 집중하기 어려웠다', '남들이 알아챌 만큼 움직임이나 말이 느려졌다. 또는 반대로 안절부절못했다', '차라리 죽는 편이 낫겠다거나 스스로를 해치고 싶다는 생각이 들었다'],
+  phq: { name: '우울 살펴보기', sub: 'PHQ-9 · 9문항 · 1~2분쯤', q: ['일이나 여가에서 흥미나 즐거움을 거의 느끼지 못했다', '기분이 가라앉거나 우울하거나 희망이 없다고 느꼈다', '잠들기 어렵거나 자주 깼다. 또는 너무 많이 잤다', '피곤하거나 기운이 거의 없었다', '입맛이 없거나 지나치게 많이 먹었다', '내가 실패자 같거나, 나와 가족을 실망시켰다고 느꼈다', '글을 읽거나 TV를 볼 때 집중하기 어려웠다', '남들이 알아챌 만큼 움직임이나 말이 느려졌다. 또는 반대로 안절부절못했다', '차라리 죽는 편이 낫겠다거나 스스로를 해치고 싶다는 생각이 들었다'],
     bands: [[0, '우울 증상이 거의 없는 범위예요'], [5, '가벼운 우울 증상 범위예요'], [10, '중간 정도의 우울 증상 범위예요'], [15, '우울 증상이 꽤 있는 범위예요'], [20, '우울 증상이 많은 범위예요']] },
-  gad: { name: '불안 살펴보기', sub: 'GAD-7, 7문항, 2분쯤', q: ['초조하거나 불안하거나 조마조마했다', '걱정을 멈추거나 조절하기 어려웠다', '여러 가지 일을 지나치게 걱정했다', '편하게 쉬기 어려웠다', '안절부절못해서 가만히 있기 힘들었다', '쉽게 짜증이 나거나 화가 났다', '끔찍한 일이 생길 것 같아 두려웠다'],
+  gad: { name: '불안 살펴보기', sub: 'GAD-7 · 7문항 · 1분쯤', q: ['초조하거나 불안하거나 조마조마했다', '걱정을 멈추거나 조절하기 어려웠다', '여러 가지 일을 지나치게 걱정했다', '편하게 쉬기 어려웠다', '안절부절못해서 가만히 있기 힘들었다', '쉽게 짜증이 나거나 화가 났다', '끔찍한 일이 생길 것 같아 두려웠다'],
     bands: [[0, '불안 증상이 거의 없는 범위예요'], [5, '가벼운 불안 증상 범위예요'], [10, '중간 정도의 불안 증상 범위예요'], [15, '불안 증상이 많은 범위예요']] }
 };
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
@@ -258,7 +272,7 @@ function renderCheck() {
   var el = $('check'), z = state.quiz;
   if (!z) {
     el.innerHTML = '<h2>요즘 마음, 잠깐 살펴볼까요</h2><p class="lead">지난 2주를 떠올리며 답하면 돼요. 정답은 없어요. 무료이고 가입도 필요 없어요.</p>' +
-      '<div class="pick">' + Object.keys(TESTS).map(function (k) { return '<button data-test="' + k + '"><b>' + TESTS[k].name + '</b><small>' + TESTS[k].sub + '</small></button>'; }).join('') + '</div>' +
+      '<div class="pick">' + Object.keys(TESTS).map(function (k) { return '<button data-test="' + k + '"><b>' + TESTS[k].name + '</b><small>' + TESTS[k].sub + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
       '<p class="note">답한 내용은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 결과는 진단이 아니에요.</p>' +
       '<p class="caution">문항은 공식 한국어판 문구로 교체하기 전 임시 문구예요.</p>';
     return;
@@ -269,16 +283,29 @@ function renderCheck() {
     el.innerHTML = '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + t.q.length + '" aria-valuenow="' + i + '"><i style="width:' + (i / t.q.length * 100) + '%"></i></div>' +
       '<p class="lead">' + t.q.length + '개 중 ' + (i + 1) + '번째. 지난 2주 동안 얼마나 자주 그랬나요?</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
       '<div class="opts">' + OPT.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
+      (z.test === 'phq' && i === 8 ? '<p class="note">답하기 버겁다면 잠시 멈춰도 괜찮아요. 지금 누군가와 이야기하고 싶다면 <a href="tel:109">109</a>에 전화할 수 있어요. 24시간 받아요.</p>' : '') +
       '<button class="textbtn" id="quit">' + (i ? '‹ 이전 문항으로' : '그만두기') + '</button>';
     var q = $('qtext'); if (q) q.focus();
     return;
   }
   var score = z.ans.reduce(function (a, b) { return a + b; }, 0), max = t.q.length * 3, risk = z.test === 'phq' && z.ans[8] > 0;
-  el.innerHTML = (risk ? '<div class="help"><p>스스로를 해치고 싶은 생각이 들었다고 답해 주셨어요. 혼자 견디지 않아도 돼요. 지금 전화하면 24시간 이야기할 수 있어요.</p><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a></div>' : '') +
-    '<div class="score"><span class="num">' + t.name + ', ' + max + '점 중 ' + score + '점</span><strong>' + band(t, score) + '</strong>' +
-    '<p>' + (score >= 10 || risk ? '전문가와 이야기해 보면 도움이 될 수 있어요. 가까운 곳부터 천천히 살펴봐요.' : '지금 답한 내용으로는 증상이 많지 않아요. 그래도 힘들다고 느끼면 그 느낌이 먼저예요.') + '</p></div>' +
+  var tier = risk || score >= 15 ? 3 : score >= 10 ? 2 : score >= 5 ? 1 : 0;
+  var GUIDE = [
+    { p: '지금 답한 내용으로는 증상이 많지 않아요. 그래도 힘들다고 느끼면 그 느낌이 먼저예요.',
+      b: [['tobreath', '30초 숨 고르기', 'ghost'], ['tofacts', '나만 이런 걸까요? 숫자로 보기', 'ghost']] },
+    { p: '가벼운 신호가 보여요. 잠, 끼니, 짧은 산책처럼 하루의 기본부터 챙겨 보세요. 이런 상태가 2주 넘게 이어지면 상담을 받아 보는 것도 좋은 방법이에요.',
+      b: [['tofree', '무료 공공 상담기관 보기', 'primary'], ['tobreath', '30초 숨 고르기', 'ghost']] },
+    { p: '전문가와 이야기해 보면 도움이 될 수 있는 신호예요. 정신건강복지센터에서는 비용 부담 없이 첫 상담을 받을 수 있고, 가까운 의원에 예약해도 돼요.',
+      b: [['tomap', '가까운 기관 보기', 'primary'], ['tofree', '무료 공공 상담기관만 보기', 'ghost'], ['toguide', '병원이 처음이라 걱정된다면', 'ghost']] },
+    { p: '혼자 감당하기에 무거운 상태일 수 있어요. 이번 주 안에 전문가와 이야기해 보길 권해요. 혼자 가기 어렵다면 가족이나 친구에게 같이 가 달라고 하거나, 전화 상담부터 시작해도 괜찮아요.',
+      b: [['tomap', '가까운 기관 보기', 'primary'], ['tofree', '무료 공공 상담기관만 보기', 'ghost'], ['toguide', '병원이 처음이라 걱정된다면', 'ghost']] }
+  ][tier];
+  el.innerHTML = (tier === 3 ? '<div class="help"><p>' + (risk ? '스스로를 해치고 싶은 생각이 들었다고 답해 주셨어요. ' : '') + '혼자 견디지 않아도 돼요. 지금 전화하면 24시간 이야기할 수 있어요.</p><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 정신건강 위기상담</a></div>' : '') +
+    '<div class="score"><strong>' + band(t, score) + '</strong><p>' + GUIDE.p + '</p>' +
+    '<span class="num">' + t.name + ' · ' + max + '점 중 ' + score + '점. 점수는 상태를 판정하는 게 아니라, 도움을 요청해 볼 만한지 알려 주는 신호예요.</span></div>' +
+    GUIDE.b.map(function (x) { return '<button class="' + x[2] + '" id="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
-    '<button class="primary" id="tomap">가까운 기관 보기</button><button class="ghost" id="tofree">무료 공공 상담기관만 보기</button><button class="textbtn" id="again">다른 검진 해 보기</button>';
+    '<button class="textbtn" id="again">다른 검진 해 보기</button>';
 }
 
 /* ───────── 마음 통계 ───────── */
@@ -470,6 +497,9 @@ document.addEventListener('click', function (e) {
   if (b.id === 'again') { state.quiz = null; return renderCheck(); }
   if (b.id === 'tomap') { state.sel = null; go('map'); return drawMap(true); }
   if (b.id === 'tofree' || b.id === 'factsfree') return showFreeOnMap();
+  if (b.id === 'tofacts') return go('facts');
+  if (b.id === 'toguide') return go('guide');
+  if (b.id === 'tobreath') { go('home'); var bb = $('breathbtn'); if (bb.getAttribute('aria-expanded') !== 'true') breathe(); setTimeout(function () { bb.scrollIntoView({ block: 'center' }); }, 50); return; }
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'sido' && e.target.value !== '') {
