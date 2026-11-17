@@ -259,14 +259,22 @@ function useMyLocation() {
 }
 function afterOrigin(fit) { $('research').hidden = true; state.sel = null; state.shown = CFG.LIST_STEP || 30; setDistances(); renderPanel(); drawMap(fit !== false); }
 
-/* ───────── 자가검진 (문항은 공식 한국어판 확인 전 임시 문구) ───────── */
-var OPT = ['전혀 없었어요', '며칠 정도', '절반 넘는 날', '거의 매일'];
+/* ───────── 자가검진 (PHQ-9 · GAD-7 공식 한국어판) ───────── */
+// 문항·보기·질문 문장: PHQ-9, GAD-7 공식 한국어판(Korean for Korea) 원문 그대로.
+// Pfizer Inc.로부터 교육용 지원금을 받아 Robert L. Spitzer 박사, Janet B.W. Williams 박사, Kurt Kroenke 박사와 동료들에 의해 개발. 복제·번역·전시·배포에 허가가 필요하지 않음.
 var TESTS = {
-  phq: { name: '우울 살펴보기', sub: 'PHQ-9 · 9문항 · 1~2분쯤', q: ['일이나 여가에서 흥미나 즐거움을 거의 느끼지 못했다', '기분이 가라앉거나 우울하거나 희망이 없다고 느꼈다', '잠들기 어렵거나 자주 깼다. 또는 너무 많이 잤다', '피곤하거나 기운이 거의 없었다', '입맛이 없거나 지나치게 많이 먹었다', '내가 실패자 같거나, 나와 가족을 실망시켰다고 느꼈다', '글을 읽거나 TV를 볼 때 집중하기 어려웠다', '남들이 알아챌 만큼 움직임이나 말이 느려졌다. 또는 반대로 안절부절못했다', '차라리 죽는 편이 낫겠다거나 스스로를 해치고 싶다는 생각이 들었다'],
+  phq: { name: '우울 살펴보기', sub: 'PHQ-9 · 9문항 · 1~2분쯤',
+    stem: '지난 2주일 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
+    opt: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '7일 이상 방해 받았다', '거의 매일 방해 받았다'],
+    q: ['일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', '기분이 가라앉거나, 우울하거나, 희망이 없음', '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', '피곤하다고 느끼거나 기운이 거의 없음', '입맛이 없거나 과식을 함', '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함'],
     bands: [[0, '우울 증상이 거의 없는 범위예요'], [5, '가벼운 우울 증상 범위예요'], [10, '중간 정도의 우울 증상 범위예요'], [15, '우울 증상이 꽤 있는 범위예요'], [20, '우울 증상이 많은 범위예요']] },
-  gad: { name: '불안 살펴보기', sub: 'GAD-7 · 7문항 · 1분쯤', q: ['초조하거나 불안하거나 조마조마했다', '걱정을 멈추거나 조절하기 어려웠다', '여러 가지 일을 지나치게 걱정했다', '편하게 쉬기 어려웠다', '안절부절못해서 가만히 있기 힘들었다', '쉽게 짜증이 나거나 화가 났다', '끔찍한 일이 생길 것 같아 두려웠다'],
+  gad: { name: '불안 살펴보기', sub: 'GAD-7 · 7문항 · 1분쯤',
+    stem: '지난 2주 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
+    opt: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '2주 중 절반 이상 방해 받았다', '거의 매일 방해 받았다'],
+    q: ['초조하거나 불안하거나 조마조마하게 느낀다', '걱정하는 것을 멈추거나 조절할 수가 없다', '여러 가지 것들에 대해 걱정을 너무 많이 한다', '편하게 있기가 어렵다', '너무 안절부절못해서 가만히 있기가 힘들다', '쉽게 짜증이 나거나 쉽게 성을 내게 된다', '마치 끔찍한 일이 생길 것처럼 두렵게 느껴진다'],
     bands: [[0, '불안 증상이 거의 없는 범위예요'], [5, '가벼운 불안 증상 범위예요'], [10, '중간 정도의 불안 증상 범위예요'], [15, '불안 증상이 많은 범위예요']] }
 };
+var TEST_SRC = '문항: PHQ-9·GAD-7 공식 한국어판. Pfizer Inc.의 교육용 지원금으로 Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke 박사와 동료들이 개발했으며, 복제·번역·전시·배포에 허가가 필요하지 않아요.';
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
 function renderCheck() {
   var el = $('check'), z = state.quiz;
@@ -274,15 +282,15 @@ function renderCheck() {
     el.innerHTML = '<h2>요즘 마음, 잠깐 살펴볼까요</h2><p class="lead">지난 2주를 떠올리며 답하면 돼요. 정답은 없어요. 무료이고 가입도 필요 없어요.</p>' +
       '<div class="pick">' + Object.keys(TESTS).map(function (k) { return '<button data-test="' + k + '"><b>' + TESTS[k].name + '</b><small>' + TESTS[k].sub + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
       '<p class="note">답한 내용은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 결과는 진단이 아니에요.</p>' +
-      '<p class="caution">문항은 공식 한국어판 문구로 교체하기 전 임시 문구예요.</p>';
+      '<p class="caution">' + TEST_SRC + '</p>';
     return;
   }
   var t = TESTS[z.test];
   if (z.ans.length < t.q.length) {
     var i = z.ans.length;
     el.innerHTML = '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + t.q.length + '" aria-valuenow="' + i + '"><i style="width:' + (i / t.q.length * 100) + '%"></i></div>' +
-      '<p class="lead">' + t.q.length + '개 중 ' + (i + 1) + '번째. 지난 2주 동안 얼마나 자주 그랬나요?</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
-      '<div class="opts">' + OPT.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
+      '<p class="lead">' + t.q.length + '개 중 ' + (i + 1) + '번째</p><p class="stem">' + t.stem + '</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
+      '<div class="opts">' + t.opt.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
       (z.test === 'phq' && i === 8 ? '<p class="note">답하기 버겁다면 잠시 멈춰도 괜찮아요. 지금 누군가와 이야기하고 싶다면 <a href="tel:109">109</a>에 전화할 수 있어요. 24시간 받아요.</p>' : '') +
       '<button class="textbtn" id="quit">' + (i ? '‹ 이전 문항으로' : '그만두기') + '</button>';
     var q = $('qtext'); if (q) q.focus();
@@ -305,7 +313,8 @@ function renderCheck() {
     '<span class="num">' + t.name + ' · ' + max + '점 중 ' + score + '점. 점수는 상태를 판정하는 게 아니라, 도움을 요청해 볼 만한지 알려 주는 신호예요.</span></div>' +
     GUIDE.b.map(function (x) { return '<button class="' + x[2] + '" id="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
-    '<button class="textbtn" id="again">다른 검진 해 보기</button>';
+    '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
+    '<p class="caution">' + TEST_SRC + '</p>';
 }
 
 /* ───────── 마음 통계 ───────── */
