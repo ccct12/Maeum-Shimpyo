@@ -380,7 +380,7 @@ function renderFacts() {
 
     '<div class="fsec"><h2>많은 사람이 이미 도움을 청하고 있어요</h2>' +
       '<div class="tiles">' + S.tiles.help.map(tile).join('') + '</div>' +
-      '<div class="callout"><p>지금 이야기할 곳이 필요하다면</p><div class="actions"><a class="call" href="tel:109">109 자살예방 상담전화</a><div class="pair"><a href="tel:15770199">1577-0199 위기상담</a><a href="tel:1388">1388 청소년 상담</a></div></div></div></div>' +
+      '<div class="callout"><p>지금 이야기할 곳이 필요하다면</p><div class="actions trio"><a href="tel:109">109 자살예방 상담전화</a><a href="tel:15770199">1577-0199 위기상담</a><a href="tel:1388">1388 청소년 상담</a></div></div></div>' +
 
     '<div class="fsec"><h2>도움을 받는 사람은 아직 많지 않아요</h2>' +
       '<div class="tiles">' + (S.tiles.svc ? tile(S.tiles.svc) : '') + tile(S.tiles.door) + '</div>' +

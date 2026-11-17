@@ -369,3 +369,8 @@ details.tbl th:first-child,details.tbl td:first-child{text-align:left}
 /* 검색 결과 없음 */
 .empty.withart{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;border-style:solid;border-color:transparent;background:var(--surface)}
 .emptyart{width:120px;height:auto;color:var(--green)}
+
+/* 통계 화면 위기상담 버튼 셋은 같은 모양으로 (하나만 튀지 않게) */
+.actions.trio{display:grid;grid-template-columns:1fr;gap:8px}
+.actions.trio a{font-weight:600;font-variant-numeric:tabular-nums}
+@media (min-width:600px){.actions.trio{grid-template-columns:repeat(3,1fr)}}
