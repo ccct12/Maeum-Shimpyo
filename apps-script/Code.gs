@@ -7,8 +7,10 @@
  *
  * [티맵 약관 반영] "TMAP Open API로 얻은 데이터는 저장 후 24시간 이상 사용할 수 없음"
  *   → 공공데이터가 준 좌표(HIRA·KHIS)는 그대로 쓰고, 티맵 좌표는 좌표가 없는 행에만 넣는다.
- *   → 티맵 좌표는 '좌표갱신' 시각을 함께 적고, 매일 자동 실행으로 다시 받아 24시간을 넘기지 않는다.
- *   → 24시간이 지난 티맵 좌표는 웹으로 내보내지 않는다.
+ *   → 티맵 좌표는 '좌표갱신' 시각을 함께 적고, 6시간마다 자동 실행해 16시간이 지난 좌표를 다시 받는다.
+ *     (하루 한 번만 돌리면, 오후에 받은 좌표는 새벽엔 아직 새것이라 건너뛰고 그날 오후에 만료돼 지도에서 빠진다)
+ *   → 23시간이 지난 티맵 좌표는 웹으로 내보내지 않는다.
+ *   → 티맵이 오류(사용량 초과·키 문제 등)를 돌려주면 기존 값을 지우지 않고 다음 실행에서 다시 시도한다.
  */
 
 var CFG = {
@@ -25,7 +27,8 @@ var CFG = {
     show: '노출'
   },
   HIDE: ['비고', '검수상태', '출처키', '좌표갱신'], // 웹으로 내보내지 않는 내부 열
-  TMAP_MAX_AGE_H: 23,         // 이 시간이 지나면 다시 받음 (약관 24시간보다 여유 있게)
+  TMAP_MAX_AGE_H: 23,         // 이 시간이 지난 티맵 좌표는 웹으로 내보내지 않음 (약관 24시간보다 여유 있게)
+  TMAP_REFRESH_H: 16,         // 이 시간이 지나면 다시 받음 (6시간마다 실행 → 늦어도 22시간 안에 갱신)
   TIME_LIMIT_MS: 5 * 60 * 1000, // Apps Script 1회 실행 6분 제한 대비
   CACHE_SEC: 3600
 };
@@ -37,7 +40,7 @@ function onOpen() {
   ui.createMenu('마음쉼표')
     .addItem('① 티맵 키 저장', 'setTmapKey')
     .addItem('② 좌표 비어 있는 행 채우기 (티맵)', 'fillCoords')
-    .addItem('③ 매일 자동 갱신 켜기', 'installDailyTrigger')
+    .addItem('③ 자동 갱신 켜기 (6시간마다)', 'installDailyTrigger')
     .addItem('좌표 결과 점검', 'checkCoords')
     .addItem('웹 데이터 새로고침(캐시 비우기)', 'clearWebCache')
     .addToUi();
@@ -55,7 +58,8 @@ function setTmapKey() {
 }
 
 /* ───────── 2. 티맵 좌표 채우기 ─────────
- * 대상: 좌표가 없는 행, 받은 지 23시간이 지난 티맵 좌표, 이전에 변환 실패한 행
+ * 대상: 좌표가 없는 행, 노출 중인 기관의 받은 지 16시간이 지난 티맵 좌표, 이전에 변환 실패한 행
+ * (노출하지 않는 기관의 티맵 좌표는 쓰지 않으므로 다시 받지 않는다. 노출로 바꾸면 다음 실행에서 갱신된다)
  * 공공데이터 좌표(좌표출처=원본·직접입력)는 건드리지 않는다.
  * 50건씩 동시에 요청하고, 결과는 열 단위로 한 번에 기록한다. 6분 안에 못 끝나면 다음 실행에서 이어서 한다. */
 var SRC_TMAP = '티맵', SRC_FAIL = '변환실패';
@@ -65,6 +69,7 @@ function fillCoords() {
   if (!key) throw new Error('스크립트 속성에 TMAP_KEY가 없습니다.');
 
   var sh = sheet_(CFG.FAC_SHEET), idx = ensureCols_(sh), last = sh.getLastRow();
+  var showCol = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String).indexOf(CFG.COL.show);
   if (last < 2) return;
   var n = last - 1;
   var data = sh.getRange(2, 1, n, sh.getLastColumn()).getValues();
@@ -77,17 +82,19 @@ function fillCoords() {
     var addr = String(row[idx.addr] || '').trim();
     if (!addr) return;
     if (has && s !== SRC_TMAP) { if (!s) src[r][0] = '원본'; return; }   // 원본 좌표 유지
-    if (s === SRC_TMAP && has && !isStale_(row[idx.at])) return;          // 아직 유효
+    var shown = showCol < 0 || String(row[showCol]).toUpperCase() === 'TRUE';
+    if (s === SRC_TMAP && has && (!shown || !isStale_(row[idx.at], CFG.TMAP_REFRESH_H))) return;   // 아직 유효하거나 노출 안 함
     todo.push({ r: r, addr: addr });
   });
 
-  var started = Date.now(), now = new Date(), done = 0, fail = 0, B = 50;
+  var started = Date.now(), now = new Date(), done = 0, fail = 0, err = 0, B = 50;
   for (var i = 0; i < todo.length; i += B) {
     if (Date.now() - started > CFG.TIME_LIMIT_MS) break;   // 남은 행은 다음 실행에서
     var batch = todo.slice(i, i + B);
     var res = UrlFetchApp.fetchAll(batch.map(function (t) { return tmapReq_(t.addr, key); }));
     res.forEach(function (resp, j) {
       var r = batch[j].r, p = parseTmap_(resp);
+      if (p && p.err) { err++; return; }        // 티맵 오류: 기존 값 그대로 두고 다음에 다시
       if (p) { lat[r][0] = p.lat; lng[r][0] = p.lng; src[r][0] = SRC_TMAP; at[r][0] = now; done++; }
       else   { lat[r][0] = ''; lng[r][0] = ''; src[r][0] = SRC_FAIL; at[r][0] = ''; fail++; }
     });
@@ -99,7 +106,8 @@ function fillCoords() {
   sh.getRange(2, idx.src + 1, n, 1).setValues(src);
   sh.getRange(2, idx.at + 1, n, 1).setValues(at);
   clearWebCache();
-  Logger.log('대상 ' + todo.length + '건 · 입력 ' + done + ' · 실패 ' + fail + ' · 남음 ' + (todo.length - done - fail));
+  Logger.log('대상 ' + todo.length + '건 · 입력 ' + done + ' · 주소 못 찾음 ' + fail + ' · 티맵 오류 ' + err + ' · 남음 ' + (todo.length - done - fail - err));
+  return { todo: todo.length, done: done, fail: fail, err: err };
 }
 
 function tmapReq_(addr, key) {
@@ -114,7 +122,9 @@ function cleanAddr_(a) {           // 괄호 속 동·건물명과 층·호수�
 }
 function parseTmap_(resp) {
   try {
-    if (resp.getResponseCode() !== 200) return null;
+    var code = resp.getResponseCode();
+    if (code === 204) return null;                                       // 주소를 못 찾음
+    if (code !== 200) return { err: code };                              // 사용량 초과·키 오류 등
     var c = JSON.parse(resp.getContentText()).coordinateInfo.coordinate[0];
     var lat = parseFloat(c.newLat || c.lat), lng = parseFloat(c.newLon || c.lon);
     if (!(lat > 33 && lat < 39 && lng > 124 && lng < 132)) return null;  // 대한민국 범위 밖이면 오류로 봄
@@ -126,7 +136,7 @@ function installDailyTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'fillCoords') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('fillCoords').timeBased().everyDays(1).atHour(4).create();
+  ScriptApp.newTrigger('fillCoords').timeBased().everyHours(6).create();
 }
 
 function checkCoords() {
@@ -286,7 +296,7 @@ function table_(name) {
   });
 }
 function isNum_(x) { return x !== '' && x !== null && !isNaN(parseFloat(x)); }
-function isStale_(t) {
+function isStale_(t, h) {
   var d = t instanceof Date ? t : new Date(t);
-  return isNaN(d) || (Date.now() - d.getTime()) > CFG.TMAP_MAX_AGE_H * 3600e3;
+  return isNaN(d) || (Date.now() - d.getTime()) > (h || CFG.TMAP_MAX_AGE_H) * 3600e3;
 }
