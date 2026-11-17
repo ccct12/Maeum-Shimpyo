@@ -102,6 +102,9 @@ main{min-height:0;position:relative}
 .pin.m .pn{border-radius:50%;background:#14523C}
 .pin.p .pn{border-radius:8px;background:#B04A12}
 .pin::after{content:"";position:absolute;bottom:0;left:50%;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top:6px solid #14201B}
+.pin.dot{padding:0;filter:drop-shadow(0 1px 2px rgba(10,20,15,.5))}
+.pin.dot::after{display:none}
+.pin.dot .pn{width:14px;height:14px;border-width:2px;box-shadow:0 0 0 1px #14201B}
 .pin.sel .pn{width:38px;height:38px;font-size:15px;background:#14201B}
 .pin .pl{position:absolute;bottom:100%;margin-bottom:6px;white-space:nowrap;background:#14201B;color:#fff;font:600 13px/1.3 var(--f-body);padding:5px 10px;border-radius:8px}
 .me{width:16px;height:16px;border-radius:50%;background:#2F6FD0;border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,111,208,.25)}

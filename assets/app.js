@@ -151,11 +151,12 @@ function drawMap(fit) {
   K.pins = [];
   list.forEach(function (f, i) {
     var sel = state.sel === f.id, b = document.createElement('button');
-    b.className = 'pin ' + f.c + (sel ? ' sel' : '');
+    var big = i < 10 || sel;                 // 가까운 10곳만 번호 핀, 나머지는 작은 점(겹침 방지)
+    b.className = 'pin ' + f.c + (sel ? ' sel' : '') + (big ? '' : ' dot');
     b.setAttribute('aria-label', (i + 1) + '번 ' + f.n);
-    b.innerHTML = '<span class="pn">' + (i + 1) + '</span>' + (sel ? '<span class="pl">' + esc(f.n) + '</span>' : '');
+    b.innerHTML = (big ? '<span class="pn">' + (i + 1) + '</span>' : '<span class="pn"></span>') + (sel ? '<span class="pl">' + esc(f.n) + '</span>' : '');
     b.onclick = function () { select(f.id); };
-    var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, yAnchor: 1, xAnchor: 0.5, zIndex: sel ? 50 : 10 + (list.length - i), clickable: true });
+    var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, xAnchor: 0.5, yAnchor: big ? 1 : 0.5, zIndex: sel ? 50 : big ? 20 + (list.length - i) : 5, clickable: true });
     o.setMap(K.map); K.pins.push(o);
   });
   if (K.me) K.me.setMap(null);
@@ -198,7 +199,7 @@ function renderPanel() {
   var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일']].map(function (c) {
     return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + F[c[0]] + '">' + c[1] + '</button>';
   }).join('');
-  var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '">' + s[0] + '</option>'; }).join('');
+  var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '"' + (state.sido === i ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
   var cards = list.slice(0, state.shown).map(function (f, i) {
     var s = status(f, n);
     return '<li><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
@@ -263,7 +264,7 @@ function useMyLocation() {
   if (!navigator.geolocation) { alert('이 브라우저에서는 위치를 쓸 수 없어요. 지역을 골라 주세요.'); return; }
   var b = $('locate'); if (b) b.textContent = '위치 찾는 중…';
   navigator.geolocation.getCurrentPosition(function (pos) {
-    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true;
+    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true; state.sido = null;
     afterOrigin();
   }, function () {
     if (b) b.textContent = '내 위치로 찾기';
@@ -524,7 +525,7 @@ document.addEventListener('click', function (e) {
   if (b.dataset.go) { e.preventDefault(); return go(b.dataset.go); }
   if (b.dataset.id) return select(b.dataset.id);
   if (b.dataset.kind) { state.kind = b.dataset.kind; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
-  if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; return afterOrigin(false); }
+  if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; state.sido = null; return afterOrigin(false); }
   if (b.id === 'copy') { var t = b.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { b.textContent = '복사했어요'; }); return; }
   if (b.id === 'breathbtn') return breathe();
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
@@ -543,7 +544,7 @@ document.addEventListener('click', function (e) {
 });
 document.addEventListener('change', function (e) {
   if (e.target.id === 'sido' && e.target.value !== '') {
-    var s = SIDO[+e.target.value]; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false; afterOrigin();
+    state.sido = +e.target.value; var s = SIDO[state.sido]; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false; afterOrigin();
   }
 });
 var qTimer;
