@@ -237,7 +237,7 @@ function renderPanel() {
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
       : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. 지금은 ' + esc(state.origin.label) + ' 기준이에요. ' + externalLink() + '</p>'
-      : !state.mine && state.sido == null && state.origin.label !== '지도 가운데' ? '<p class="meta">내 위치를 쓰기 전에는 ' + esc(state.origin.label) + '을 기준으로 기준으로 보여 줘요. 위치 버튼을 누르거나 사는 지역을 골라 주세요.</p>' : '') +
+      : !state.mine && state.sido == null && state.origin.label !== '지도 가운데' ? '<p class="meta">내 위치를 쓰기 전에는 ' + esc(state.origin.label) + ' 기준으로 보여 줘요. 위치 버튼을 누르거나 사는 지역을 골라 주세요.</p>' : '') +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
@@ -329,7 +329,7 @@ var TEST_SRC = '문항 출처: PHQ-9·GAD-7 공식 한국어판 (Pfizer Inc.)';
 function bandTable(t, score) {
   var max = t.q.length * 3, rows = t.bands.map(function (b, i) {
     var hi = i < t.bands.length - 1 ? t.bands[i + 1][0] - 1 : max, on = score >= b[0] && score <= hi;
-    return '<tr' + (on ? ' class="on"' : '') + '><td>' + b[0] + '–' + hi + '점</td><td>' + b[1].replace(/ 범위예요$/, '') + (on ? ' (지금)' : '') + '</td></tr>';
+    return '<tr' + (on ? ' class="on"' : '') + '><td>' + b[0] + '–' + hi + '점</td><td>' + b[1].replace(/ 범위예요$/, ' 범위') + (on ? ' (지금)' : '') + '</td></tr>';
   }).join('');
   return '<details class="tbl bands"><summary>점수 구간 기준 보기</summary><table><thead><tr><th scope="col">점수</th><th scope="col">구간</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<p class="meta">구간은 증상이 얼마나 자주 있었는지를 나눈 기준일 뿐, 병명을 뜻하지 않아요.</p></details>';
@@ -337,7 +337,7 @@ function bandTable(t, score) {
 /* 병원·상담기관에 보여 줄 요약: 점수와 구간만 담는다. 문항별 답은 넣지 않는다. 저장하지 않고 복사만 한다 */
 function sumHTML(t, score) {
   var d = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  var txt = '[자가검진 요약] ' + t.sub.split(' · ')[0] + ' ' + t.name + ' · ' + (t.q.length * 3) + '점 중 ' + score + '점 (' + band(t, score).replace(/ 범위예요$/, '') + ') · ' + d + ' · 진단이 아닌 참고용';
+  var txt = '[자가검진 요약] ' + t.sub.split(' · ')[0] + ' ' + t.name + ' · ' + (t.q.length * 3) + '점 중 ' + score + '점 (' + band(t, score).replace(/ 범위예요$/, ' 범위') + ') · ' + d + ' · 진단이 아닌 참고용';
   return '<div class="sum"><button class="ghost" id="copysum" data-copy="' + esc(txt) + '">상담할 때 보여 줄 요약 복사하기</button>' +
     '<p class="meta">점수와 구간만 복사돼요. 어떤 문항에 어떻게 답했는지는 담기지 않고, 어디에도 저장되지 않아요.</p></div>';
 }
