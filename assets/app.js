@@ -443,7 +443,7 @@ function supCard(x) {
     (rows ? '<details class="sdet"><summary>조건과 신청 방법 보기</summary><dl>' + rows + '</dl></details>' : '') +
     '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
       (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 자세히 보기</a>' : '') + '</div>' +
-    (x.mod ? '<p class="meta">복지로 기준 ' + esc(x.mod) + '</p>' : '') + '</article>';
+    (x.mod ? '<p class="meta">복지로에서 확인한 날 ' + esc(x.mod) + '</p>' : '') + '</article>';
 }
 function renderSupport() {
   var el = $('supbox'), all = state.support || [], z = state.sup || (state.sup = { life: 'all', area: null });

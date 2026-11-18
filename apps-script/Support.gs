@@ -203,7 +203,7 @@ function support_() {
     if (r['상태'] === '목록에서 빠짐') return;
     out.push({ id: r['사업ID'], k: r['구분'] === '전국' ? 'n' : 'l', n: r['사업명'], s: r['쉬운 설명'] || r['요약'],
       org: r['담당'], sd: r['시도'], sg: r['시군구'], life: r['생애주기'], on: r['온라인신청'] === '가능' ? 1 : 0,
-      tel: r['대표문의'], url: r['상세링크'], mod: fmtYmd_(r['최종수정일']),
+      tel: r['대표문의'], url: r['상세링크'], mod: fmtYmd_(r['마지막확인일']),   // 전국 API는 수정일 대신 최초등록일만 줘서, 우리가 확인한 날을 쓴다
       tgt: r['지원대상'], crit: r['선정기준'], ben: r['지원내용'], how: r['신청방법 상세'] || r['신청방법'], inq: r['문의처'] });
   });
   return { kind: 'support', asOf: new Date().toISOString(), count: out.length, items: out };
