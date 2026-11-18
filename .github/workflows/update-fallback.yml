@@ -1,0 +1,36 @@
+name: 예비 데이터 갱신
+
+on:
+  schedule:
+    - cron: '20 */6 * * *'   # 6시간마다 (Apps Script 좌표 갱신 주기와 맞춤)
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/update-fallback.yml'
+      - 'scripts/update_fallback.py'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-fallback
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apps Script에서 기관 목록 받기
+        run: python scripts/update_fallback.py
+      - name: 바뀌었으면 커밋
+        run: |
+          if git diff --quiet -- data/facilities-fallback.json; then echo "바뀐 내용 없음"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/facilities-fallback.json
+          git commit -m "예비 데이터 자동 갱신"
+          git push

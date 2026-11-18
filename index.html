@@ -20,7 +20,7 @@
 <link rel="icon" href="assets/img/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=202611181500">
+<link rel="stylesheet" href="assets/style.css?v=202611181030">
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -46,8 +46,8 @@
         <div class="sprout-wrap">
           <button class="sprout idle" id="sprout" aria-label="힘들 땐 눌러 줘요. 짧은 문장과 쉬어 가는 방법을 보여 줘요">
             <svg viewBox="0 0 64 72" aria-hidden="true"><g class="leaves"><path class="stem" d="M32 52V30"/><path class="leaf" d="M32 34c-2-9-9-14-18-13 1 9 8 14 18 13z"/><path class="leaf r" d="M32 30c1-10 8-16 18-16 0 10-7 16-18 16z"/></g><path class="pot" d="M18 50h28l-3 16a3 3 0 0 1-3 2.5H24a3 3 0 0 1-3-2.5z"/><path class="rim" d="M16 47h32v5H16z"/></svg>
+            <span class="hint" id="sprouthint" aria-hidden="true">힘들 땐 눌러 줘요</span>
           </button>
-          <span class="hint" id="sprouthint" aria-hidden="true">힘들 땐 눌러 줘요</span>
           <div class="say" id="sproutsay" role="status" hidden></div>
         </div>
         <h1 class="hello">잠깐 쉬어 가도<br>괜찮아요<span class="comma" aria-hidden="true">,</span></h1>
@@ -55,7 +55,7 @@
         <ul class="ways">
           <li><button data-go="map"><b>가까운 병원·상담기관 찾기</b><small id="cnt">정신건강의학과, 정신건강복지센터, 상담기관</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="check"><b>내 마음 살펴보기</b><small>우울·불안 자가검진, 1~2분, 무료</small><i aria-hidden="true">›</i></button></li>
-          <li><button data-go="rest"><b>잠깐 마음 쉬기</b><small>숨 고르기, 감각으로 돌아오기, 안심 문구</small><i aria-hidden="true">›</i></button></li>
+          <li><button data-go="rest"><b>마음 쉬기</b><small>숨 고르기, 감각으로 돌아오기, 안심 문구</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="guide"><b>병원이 처음이라 걱정돼요</b><small>비용, 기록, 준비할 것</small><i aria-hidden="true">›</i></button></li>
           <li><button data-go="facts"><b>나만 이런 걸까요</b><small>숫자로 보는 우울과 불안</small><i aria-hidden="true">›</i></button></li>
         </ul>
@@ -219,7 +219,7 @@
     <button data-go="home">처음</button><button data-go="map">찾기</button><button data-go="check">살펴보기</button><button data-go="rest">쉬기</button><button data-go="facts">통계</button>
   </nav>
 </div>
-<script src="assets/config.js?v=202611181500"></script>
-<script src="assets/app.js?v=202611181500"></script>
+<script src="assets/config.js?v=202611181030"></script>
+<script src="assets/app.js?v=202611181030"></script>
 </body>
 </html>

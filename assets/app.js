@@ -37,19 +37,22 @@ function useData(j) {
   state.data = (j.items || []).map(normalize).filter(function (f) { return f && isFinite(f.lat) && isFinite(f.lng); });
   state.dataNote = j.fallback ? '공공데이터 사본(' + j.asOf + ')' : '구글 시트 ' + String(j.asOf || '').slice(0, 10);
   setDistances();
-  var c = $('cnt'); if (c && state.data.length) c.textContent = '정신건강의학과, 정신건강복지센터, 상담기관 ' + state.data.filter(function (f) { return !f.g; }).length.toLocaleString() + '곳';
+  if (!j.fallback) setCount();   // 사본 숫자를 먼저 띄웠다가 최신 숫자로 바뀌면 혼란스러워서, 숫자는 최신본이 왔을 때만 쓴다
+}
+function setCount() {
+  var c = $('cnt'); if (c && state.data && state.data.length) c.textContent = '정신건강의학과, 정신건강복지센터, 상담기관 ' + state.data.filter(function (f) { return !f.g; }).length.toLocaleString() + '곳';
 }
 // 저장소 사본을 먼저 보여 주고(빠름), 구글 시트 최신본이 오면 바꿔 끼운다.
 function loadData(onReady) {
-  var shown = false;
+  var shown = false; state.pending = !!CFG.DATA_URL;
   var fb = getJSON(CFG.FALLBACK_URL, 15000).then(function (j) { if (!shown) { useData(j); shown = true; onReady(); } }).catch(function () {});
-  if (!CFG.DATA_URL) return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } });
+  if (!CFG.DATA_URL) return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } else { setCount(); onReady(); } });
   var stamp = new Date().toISOString().slice(0, 13);  // 한 시간 단위로만 새로 받기
   return getJSON(CFG.DATA_URL + (CFG.DATA_URL.indexOf('?') < 0 ? '?' : '&') + 'type=facilities&v=' + stamp, 20000)
     .then(function (j) {
-      var keep = state.sel; useData(j); shown = true; state.sel = keep && byId(keep) ? keep : null; onReady();
+      state.pending = false; var keep = state.sel; useData(j); shown = true; state.sel = keep && byId(keep) ? keep : null; onReady();
     })
-    .catch(function () { return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } }); });
+    .catch(function () { state.pending = false; return fb.then(function () { if (!shown) { state.loadErr = true; state.data = []; onReady(); } else { setCount(); onReady(); } }); });
 }
 
 // 예전 Apps Script(한글 열 이름 그대로)로 배포돼 있어도 읽을 수 있게 맞춘다
@@ -233,12 +236,13 @@ function renderPanel() {
     '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요</p>' +
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
-      : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. ' + externalLink() + '</p>' : '') +
+      : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. 지금은 ' + esc(state.origin.label) + ' 기준이에요. ' + externalLink() + '</p>'
+      : !state.mine && state.sido == null && state.origin.label !== '지도 가운데' ? '<p class="meta">내 위치를 쓰기 전에는 ' + esc(state.origin.label) + '을 기준으로 기준으로 보여 줘요. 위치 버튼을 누르거나 사는 지역을 골라 주세요.</p>' : '') +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
-      (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳') + '</p>' +
+      (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳' + (state.pending ? ' · 최신 정보 확인 중…' : '')) + '</p>' +
     (hidden ? '<p class="meta">요양·재활 시설, 정신과 진료가 확인되지 않은 병의원 ' + hidden.toLocaleString() + '곳은 접어 두었어요. 필요하면 \'그 밖의 기관도 보기\'를 눌러 주세요.</p>' : '') +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
@@ -321,6 +325,26 @@ var TESTS = {
     bands: [[0, '불안 증상이 거의 없는 범위예요'], [5, '가벼운 불안 증상 범위예요'], [10, '중간 정도의 불안 증상 범위예요'], [15, '불안 증상이 많은 범위예요']] }
 };
 var TEST_SRC = '문항 출처: PHQ-9·GAD-7 공식 한국어판 (Pfizer Inc.)';
+/* 점수 구간표: 공개된 PHQ-9·GAD-7 구간 기준. 내 점수가 속한 줄만 굵게 */
+function bandTable(t, score) {
+  var max = t.q.length * 3, rows = t.bands.map(function (b, i) {
+    var hi = i < t.bands.length - 1 ? t.bands[i + 1][0] - 1 : max, on = score >= b[0] && score <= hi;
+    return '<tr' + (on ? ' class="on"' : '') + '><td>' + b[0] + '–' + hi + '점</td><td>' + b[1].replace(/ 범위예요$/, '') + (on ? ' (지금)' : '') + '</td></tr>';
+  }).join('');
+  return '<details class="tbl bands"><summary>점수 구간 기준 보기</summary><table><thead><tr><th scope="col">점수</th><th scope="col">구간</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="meta">구간은 증상이 얼마나 자주 있었는지를 나눈 기준일 뿐, 병명을 뜻하지 않아요.</p></details>';
+}
+/* 병원·상담기관에 보여 줄 요약: 점수와 구간만 담는다. 문항별 답은 넣지 않는다. 저장하지 않고 복사만 한다 */
+function sumHTML(t, score) {
+  var d = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var txt = '[자가검진 요약] ' + t.sub.split(' · ')[0] + ' ' + t.name + ' · ' + (t.q.length * 3) + '점 중 ' + score + '점 (' + band(t, score).replace(/ 범위예요$/, '') + ') · ' + d + ' · 진단이 아닌 참고용';
+  return '<div class="sum"><button class="ghost" id="copysum" data-copy="' + esc(txt) + '">상담할 때 보여 줄 요약 복사하기</button>' +
+    '<p class="meta">점수와 구간만 복사돼요. 어떤 문항에 어떻게 답했는지는 담기지 않고, 어디에도 저장되지 않아요.</p></div>';
+}
+function copyText(t, ok) {
+  function legacy() { var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); var r = false; try { r = document.execCommand('copy'); } catch (e) {} a.remove(); if (r) ok(); }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(ok, legacy); else legacy();
+}
 function band(t, score) { var b = t.bands[0]; t.bands.forEach(function (x) { if (score >= x[0]) b = x; }); return b[1]; }
 function renderCheck() {
   var el = $('checkbox'), z = state.quiz;
@@ -336,19 +360,21 @@ function renderCheck() {
     var i = z.ans.length;
     el.innerHTML = '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + t.q.length + '" aria-valuenow="' + i + '"><i style="width:' + (i / t.q.length * 100) + '%"></i></div>' +
       '<p class="lead">' + t.q.length + '개 중 ' + (i + 1) + '번째</p><p class="stem">' + t.stem + '</p><p class="q" id="qtext" tabindex="-1">' + t.q[i] + '</p>' +
-      '<div class="opts">' + t.opt.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
+      '<div class="opts fresh" id="opts">' + t.opt.map(function (o, v) { return '<button class="opt" data-ans="' + v + '">' + o + '</button>'; }).join('') + '</div>' +
       (z.test === 'phq' && i === 8 ? '<p class="note">답하기 버겁다면 잠시 멈춰도 괜찮아요. 지금 누군가와 이야기하고 싶다면 <a href="tel:109">109</a>에 전화할 수 있어요. 24시간 받아요.</p>' : '') +
-      '<button class="textbtn" id="quit">' + (i ? '‹ 이전 문항으로' : '그만두기') + '</button>';
+      '<div class="qnav">' + (i ? '<button class="textbtn" id="prevq">‹ 이전 문항으로</button>' : '') + '<button class="textbtn" id="quit">그만두기</button></div>';
     var q = $('qtext'); if (q) q.focus();
+    // 방금 누른 자리에 새 보기가 그려지면 마우스가 올라가 있는 것처럼 보이므로, 마우스를 움직이기 전까지는 강조하지 않는다
+    var os = $('opts'); if (os) os.addEventListener('mousemove', function () { os.classList.remove('fresh'); }, { once: true });
     return;
   }
   var score = z.ans.reduce(function (a, b) { return a + b; }, 0), max = t.q.length * 3, risk = z.test === 'phq' && z.ans[8] > 0;
   var tier = risk || score >= 15 ? 3 : score >= 10 ? 2 : score >= 5 ? 1 : 0;
   var GUIDE = [
     { p: '지금 답한 내용으로는 증상이 많지 않아요. 그래도 힘들다고 느끼면 그 느낌이 먼저예요.',
-      b: [['tobreath', '잠깐 마음 쉬기', 'ghost'], ['tofacts', '나만 이런 걸까요? 숫자로 보기', 'ghost']] },
+      b: [['tobreath', '마음 쉬기', 'ghost'], ['tofacts', '나만 이런 걸까요? 숫자로 보기', 'ghost']] },
     { p: '가벼운 신호가 보여요. 잠, 끼니, 짧은 산책처럼 하루의 기본부터 챙겨 보세요. 이런 상태가 2주 넘게 이어지면 상담을 받아 보는 것도 좋은 방법이에요.',
-      b: [['tofree', '무료 공공 상담기관 보기', 'primary'], ['tobreath', '잠깐 마음 쉬기', 'ghost']] },
+      b: [['tofree', '무료 공공 상담기관 보기', 'primary'], ['tobreath', '마음 쉬기', 'ghost']] },
     { p: '전문가와 이야기해 보면 도움이 될 수 있는 신호예요. 정신건강복지센터에서는 비용 부담 없이 첫 상담을 받을 수 있고, 가까운 의원에 예약해도 돼요.',
       b: [['tomap', '가까운 기관 보기', 'primary'], ['tofree', '무료 공공 상담기관만 보기', 'ghost'], ['toguide', '병원이 처음이라 걱정된다면', 'ghost']] },
     { p: '혼자 감당하기에 무거운 상태일 수 있어요. 이번 주 안에 전문가와 이야기해 보길 권해요. 혼자 가기 어렵다면 가족이나 친구에게 같이 가 달라고 하거나, 전화 상담부터 시작해도 괜찮아요.',
@@ -358,6 +384,7 @@ function renderCheck() {
     '<div class="score"><strong>' + band(t, score) + '</strong><p>' + GUIDE.p + '</p>' +
     '<span class="num">' + t.name + ' · ' + max + '점 중 ' + score + '점. 점수는 상태를 판정하는 게 아니라, 도움을 요청해 볼 만한지 알려 주는 신호예요.</span></div>' +
     GUIDE.b.map(function (x) { return '<button class="' + x[2] + '" id="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+    bandTable(t, score) + sumHTML(t, score) +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
     '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
     '<p class="caution">' + TEST_SRC + '</p>';
@@ -486,13 +513,22 @@ function barChart() {
 }
 
 /* ───────── 숨 고르기: 4초 들이쉬고 6초 내쉬기 (숨 참기 없음) ───────── */
+// 원 안에는 박자 숫자(4→1, 6→1)만 조용히 보여 준다. 남은 시간은 재촉처럼 느껴질 수 있어 보여 주지 않고, 마지막 한 번만 알려 준다.
 function runBreath(lung, txt, cycles, timers, done) {
-  var t = 100;
-  for (var i = 0; i < cycles; i++) {
-    timers.push(setTimeout(function () { lung.className = 'lung in'; txt.textContent = '코로 천천히 들이쉬어요'; }, t)); t += 4000;
-    timers.push(setTimeout(function () { lung.className = 'lung out'; txt.textContent = '입으로 길게 내쉬어요'; }, t)); t += 6000;
+  lung.className = 'lung'; lung.innerHTML = '<span class="cnt">준비</span>';
+  var c = lung.firstChild, t = 1500;
+  txt.textContent = '어깨 힘을 빼고 편하게 앉아요. 곧 시작해요';
+  function phase(cls, msg, sec) {
+    timers.push(setTimeout(function () { lung.className = 'lung ' + cls; txt.textContent = msg; }, t));
+    for (var s = 0; s < sec; s++) (function (n, at) { timers.push(setTimeout(function () { c.textContent = n; }, at)); })(sec - s, t + s * 1000);
+    t += sec * 1000;
   }
-  timers.push(setTimeout(done, t));
+  for (var i = 0; i < cycles; i++) {
+    var last = i === cycles - 1 && cycles > 1;
+    phase('in', '코로 천천히 들이쉬어요' + (last ? ' · 마지막 한 번이에요' : ''), 4);
+    phase('out', '입으로 길게 내쉬어요', 6);
+  }
+  timers.push(setTimeout(function () { c.textContent = ''; done(); }, t));
 }
 var breathT = [];
 function breathe() {
@@ -549,7 +585,7 @@ function renderRest() {
   var el = $('restbox'), z = state.rest;
   stopRest();
   if (!z) {
-    el.innerHTML = '<h2>잠깐 마음 쉬기</h2><p class="lead">지금 맞을 것 같은 것 하나만 골라 보세요. 숨에 집중하는 게 불편하면 다른 방법도 있어요.</p>' +
+    el.innerHTML = '<h2>마음 쉬기</h2><p class="lead">지금 맞을 것 같은 것 하나만 골라 보세요. 숨에 집중하는 게 불편하면 다른 방법도 있어요.</p>' +
       '<div class="pick">' + Object.keys(REST).map(function (k) { return '<button data-rest="' + k + '"><b>' + REST[k].t + '</b><small>' + REST[k].s + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
       soundHTML() + '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 배경 소리는 기본으로 꺼져 있어요.</p>' + restSafe();
     return;
@@ -834,7 +870,7 @@ document.addEventListener('click', function (e) {
   if (b.dataset.id) return select(b.dataset.id);
   if (b.dataset.kind) { state.kind = b.dataset.kind; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
   if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; state.sido = null; return afterOrigin(false); }
-  if (b.id === 'copy') { var t = b.dataset.copy; if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { b.textContent = '복사했어요'; }); return; }
+  if (b.id === 'copy' || b.id === 'copysum') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; }); return; }
   if (b.id === 'breathbtn') return breathe();
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
   if (b.id === 'back') { state.sel = null; state.report = null; renderPanel(); return drawMap(false); }
@@ -870,7 +906,8 @@ document.addEventListener('click', function (e) {
   }
   if (b.dataset.test) { state.quiz = { test: b.dataset.test, ans: [] }; return renderCheck(); }
   if (b.dataset.ans) { state.quiz.ans.push(+b.dataset.ans); renderCheck(); $('v-check').scrollTop = 0; return; }
-  if (b.id === 'quit') { if (state.quiz.ans.length) state.quiz.ans.pop(); else state.quiz = null; return renderCheck(); }
+  if (b.id === 'prevq') { state.quiz.ans.pop(); return renderCheck(); }
+  if (b.id === 'quit') { state.quiz = null; return renderCheck(); }
   if (b.id === 'again') { state.quiz = null; return renderCheck(); }
   if (b.id === 'tomap') { state.sel = null; go('map'); return drawMap(true); }
   if (b.id === 'tofree' || b.id === 'factsfree') return showFreeOnMap();
