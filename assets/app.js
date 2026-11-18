@@ -228,7 +228,7 @@ function renderMchips() {
   // 7개 모두 짧은 이름, 같은 너비로 한 줄에 (자세한 이름은 화면 읽기용 이름에)
   var F = state.filters, k = state.kind;
   var C = [['kind', 'm', '병원', '병원·의원만'], ['kind', 'p', '상담', '상담·지원기관만'], ['f', 'free', '무료', '무료 기관만'], ['f', 'open', '운영중', '지금 여는 곳'],
-    ['f', 'night', '20시', '저녁 8시 이후에도 여는 곳'], ['f', 'sat', '토요일', '토요일에 여는 곳'], ['f', 'more', '전체', '요양·재활 등 그 밖의 기관까지 모두 보기']];
+    ['f', 'night', '20시', '저녁 8시 이후에도 여는 곳'], ['f', 'sat', '토요일', '토요일에 여는 곳'], ['f', 'more', '외 기관', '요양·재활 등 그 밖의 기관도 보기']];
   $('mchips').innerHTML = C.map(function (c) {
     var on = c[0] === 'kind' ? k === c[1] : !!F[c[1]];
     return '<button class="mchip' + (c[0] === 'kind' ? ' k' + c[1] : '') + '" ' + (c[0] === 'kind' ? 'data-kind="' + (on ? 'all' : c[1]) + '"' : 'data-f="' + c[1] + '"') +
