@@ -531,13 +531,17 @@ function renderSupport() {
 })();
 /* 검진 점수에 맞춰 이어 볼 지원 (자격 판단이 아니라 '열어 볼 만한 것' 안내) */
 var SUP_REC = [[], [/정신건강복지센터/, /바우처/], [/바우처/, /정신건강복지센터/, /치료비/], [/자살예방/, /바우처/, /치료비/]];
+// 추천 칸에서는 행정 문장 대신 쉬운 한 줄을 쓴다
+var SUP_REC_LINE = [[/정신건강복지센터/, '조건 없이 무료로 상담을 시작하고, 필요한 지원도 이어 줘요'], [/바우처/, '전문 심리상담을 바우처로 받을 수 있어요. 소득에 따라 본인부담이 달라요'],
+  [/자살예방/, '죽고 싶은 마음이 들 때 상담과 위기 지원을 받을 수 있는 곳이에요'], [/치료비/, '정신건강의학과 치료비 부담을 덜어 주는 지원이에요']];
+function supRecLine(x) { for (var i = 0; i < SUP_REC_LINE.length; i++) if (SUP_REC_LINE[i][0].test(x.n)) return SUP_REC_LINE[i][1]; return supShort(x, 60); }
 function supRecHTML(tier) {
   if (!hasSupport() || !SUP_REC[tier] || !SUP_REC[tier].length) return '';
   var nat = state.support.filter(function (x) { return x.k === 'n'; }), pick = [];
   SUP_REC[tier].forEach(function (re) { var x = nat.filter(function (y) { return re.test(y.n) && pick.indexOf(y) < 0; })[0]; if (x) pick.push(x); });
   if (!pick.length) return '';
   return '<div class="srec"><h3>이어서 열어 볼 만한 지원</h3>' +
-    pick.map(function (x) { return '<button class="srecb" data-supid="' + esc(x.id) + '"><b>' + esc(x.n) + '</b><small>' + esc(supShort(x, 60)) + '</small><i aria-hidden="true">›</i></button>'; }).join('') +
+    pick.map(function (x) { return '<button class="srecb" data-supid="' + esc(x.id) + '"><b>' + esc(x.n) + '</b><small>' + esc(supRecLine(x)) + '</small><i aria-hidden="true">›</i></button>'; }).join('') +
     '<p class="meta">자가검진 점수만으로 신청 자격이 정해지지는 않아요. 바우처처럼 기관의 의뢰서가 필요한 지원도 있어서, 정신건강복지센터에 먼저 물어보면 길을 안내받을 수 있어요.</p>' +
     '<button class="textbtn" data-go="support">지원 제도 전체 보기 ›</button></div>';
 }
