@@ -233,11 +233,11 @@ function renderPanel() {
       : '찾는 곳이 없어요. 이름을 다르게 적어 보거나 다른 지역을 골라 보세요.';
   }
   p.innerHTML =
-    '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요</p>' +
+    '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요' + (!state.mine && state.sido == null && state.origin.label !== '지도 가운데' && !IN_KAKAO ? '<small> · 내 위치를 쓰거나 지역을 고르면 바뀌어요</small>' : '') + '</p>' +
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
       : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. 지금은 ' + esc(state.origin.label) + ' 기준이에요. ' + externalLink() + '</p>'
-      : !state.mine && state.sido == null && state.origin.label !== '지도 가운데' ? '<p class="meta">내 위치를 쓰기 전에는 ' + esc(state.origin.label) + ' 기준으로 보여 줘요. 위치 버튼을 누르거나 사는 지역을 골라 주세요.</p>' : '') +
+      : '') +
     '<div class="seg" role="group" aria-label="기관 종류">' + seg + '</div>' +
     '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
