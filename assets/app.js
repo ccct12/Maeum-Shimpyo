@@ -225,12 +225,14 @@ function mobItemHTML(f, i) {
 }
 /* 지도 위 조건 칩: 시트를 열지 않아도 바로 고를 수 있게 */
 function renderMchips() {
+  // 7개 모두 세 글자, 같은 너비로 한 줄에 (자세한 이름은 화면 읽기용 이름에)
   var F = state.filters, k = state.kind;
-  $('mchips').innerHTML = [['m', '병원·의원'], ['p', '상담·지원']].map(function (c) {
-    return '<button class="chip" data-kind="' + (k === c[0] ? 'all' : c[0]) + '" aria-pressed="' + (k === c[0]) + '">' + c[1] + '</button>';
-  }).join('') + '<span class="sep" aria-hidden="true"></span>' +
-  [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일'], ['more', '그 밖의 기관']].map(function (c) {
-    return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + !!F[c[0]] + '">' + c[1] + '</button>';
+  var C = [['kind', 'm', '병의원', '병원·의원만'], ['kind', 'p', '상담소', '상담·지원기관만'], ['f', 'free', '무료만', '무료 기관만'], ['f', 'open', '운영중', '지금 여는 곳'],
+    ['f', 'night', '밤에도', '저녁 8시 이후에도 여는 곳'], ['f', 'sat', '토요일', '토요일에 여는 곳'], ['f', 'more', '더보기', '요양·재활 등 그 밖의 기관도 보기']];
+  $('mchips').innerHTML = C.map(function (c) {
+    var on = c[0] === 'kind' ? k === c[1] : !!F[c[1]];
+    return '<button class="mchip' + (c[0] === 'kind' ? ' k' + c[1] : '') + '" ' + (c[0] === 'kind' ? 'data-kind="' + (on ? 'all' : c[1]) + '"' : 'data-f="' + c[1] + '"') +
+      ' aria-pressed="' + on + '" aria-label="' + c[3] + '">' + c[2] + '</button>';
   }).join('');
 }
 /* 시트는 아래로 끌어내리면 닫힌다 (맨 위까지 스크롤된 상태에서만) */
