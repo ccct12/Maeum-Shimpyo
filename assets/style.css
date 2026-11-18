@@ -508,3 +508,21 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   .crisis span:first-child{display:none}
   .crisis .x{display:none}
 }
+
+/* 지원 제도: 한 줄 목록 → 눌러서 펼침 */
+.slist{gap:0;border-top:1px solid var(--line)}
+.srow{border-bottom:1px solid var(--line)}
+.srow>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:14px 2px;position:relative}
+.srow>summary::-webkit-details-marker{display:none}
+.srow>summary::after{content:"›";grid-row:1/4;grid-column:2;align-self:center;color:var(--muted);font-size:20px;transition:transform .2s}
+.srow[open]>summary::after{transform:rotate(90deg)}
+.srow .sn{font-weight:600;font-size:16px}
+.srow .ss{font-size:13.5px;color:var(--muted)}
+.srow .sm{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--green);font-weight:600}
+.srow .sm .soon{color:var(--apricot)}
+.sbody{display:flex;flex-direction:column;gap:10px;padding:2px 2px 18px;font-size:15px}
+.sbody dl{margin:0;display:flex;flex-direction:column;gap:2px;font-size:14.5px}
+.sbody dt{font-weight:700;margin-top:8px}
+.sbody dd{margin:0}
+.srow.hl>summary{background:color-mix(in srgb,var(--green) 10%,transparent);border-radius:10px;padding-left:10px}
+.ssub{margin-top:22px}

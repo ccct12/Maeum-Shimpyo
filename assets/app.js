@@ -374,7 +374,7 @@ function renderPanel() {
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
     (hasSupport() ? '<button class="textbtn" data-go="support">상담 비용이 걱정된다면, 마음 지원 제도 보기 ›</button>' : '') +
-    '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있어요. 몇 년 전 자료가 섞여 있으니 가기 전에 전화로 확인해 주세요.</p>' +
+    '<p class="caution">공공데이터라 실제와 다를 수 있어요. 가기 전에 전화로 확인해 주세요.</p>' +
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' +
     footHTML();
 }
@@ -581,21 +581,25 @@ function supTel(t) {   // 문의처 문장 안의 전화번호에 바로 걸기 
   return supText(t).replace(/(\b0\d{1,2}-\d{3,4}-\d{4}\b|\b1\d{3}-\d{4}\b)/g, function (m) { return '<a href="tel:' + m.replace(/-/g, '') + '">' + m + '</a>'; });
 }
 function supShort(x, n) { var s = String(x.s || '').trim(); return s.length > n ? s.slice(0, n - 2).replace(/\s+\S*$/, '') + '…' : s; }
+// 목록은 한 줄씩 접어 두고, 누르면 그 자리에서 펼친다 (글이 한꺼번에 쏟아지지 않게)
 function supCard(x, open) {
-  var short = supShort(x, 110);
   var tel = /^[\d-]{3,14}$/.test(String(x.tel || '').trim()) ? String(x.tel).trim() : '';
   var where = x.k === 'l' ? [x.sd, x.sg].filter(Boolean).join(' ') : '';
-  var orgHasWhere = where && x.org && x.org.indexOf(x.sd) === 0;
-  var tags = [orgHasWhere ? '' : where, x.org && x.org !== where ? x.org : '', x.life ? '대상: ' + x.life.replace(/,\s*/g, ', ') : '', x.on ? '온라인 신청 가능' : ''].filter(Boolean);
-  var rows = [['누가 받을 수 있나요', x.tgt], ['선정 기준', x.crit], ['무엇을 지원하나요', x.ben], ['어떻게 신청하나요', x.how]]
+  var d = x.end ? supDays(x.end) : null, soon = d != null && d <= 30;
+  var meta = [x.end ? '<span' + (soon ? ' class="soon"' : '') + '>' + esc(x.end.slice(5).replace('-', '.')) + '까지' + (soon ? ' · 곧 끝나요' : '') + '</span>' : '',
+    x.on ? '<span>온라인 신청</span>' : '', where && x.k === 'l' ? '<span>' + esc(x.sg || x.sd) + '</span>' : ''].filter(Boolean).join('');
+  var rows = [['누가 받을 수 있나요', x.tgt], ['무엇을 지원하나요', x.ben], ['어떻게 신청하나요', x.how]]
     .filter(function (r) { return r[1]; }).map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + supText(r[1]) + '</dd>'; }).join('') +
     (x.inq ? '<dt>문의</dt><dd>' + supTel(x.inq) + '</dd>' : '');
-  return '<article class="scard" id="sup-' + esc(x.id) + '"><h4>' + esc(x.n) + '</h4>' + supPeriod(x) + (short ? '<p>' + esc(short) + '</p>' : '') +
-    (tags.length ? '<p class="stags">' + tags.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
-    (rows ? '<details class="sdet"' + (open ? ' open' : '') + '><summary>조건과 신청 방법 보기</summary><dl>' + rows + '</dl></details>' : '') +
-    '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
-      (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 자세히 보기</a>' : '') + '</div>' +
-    (x.mod ? '<p class="meta">복지로에서 확인한 날 ' + esc(x.mod) + '</p>' : '') + '</article>';
+  return '<details class="srow" id="sup-' + esc(x.id) + '"' + (open ? ' open' : '') + '><summary>' +
+      '<span class="sn">' + esc(x.n) + '</span><span class="ss">' + esc(supRecLine(x, 46)) + '</span>' + (meta ? '<span class="sm">' + meta + '</span>' : '') + '</summary>' +
+    '<div class="sbody">' + supPeriod(x) + (x.s ? '<p>' + esc(String(x.s).trim()) + '</p>' : '') +
+      (x.org || x.life ? '<p class="stags">' + [x.org, x.life ? '대상: ' + x.life.replace(/,\s*/g, ', ') : ''].filter(Boolean).map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
+      (rows ? '<dl>' + rows + '</dl>' : '') +
+      (x.crit ? '<details class="sdet"><summary>선정 기준 자세히</summary><p>' + supText(x.crit) + '</p></details>' : '') +
+      '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
+        (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 보기</a>' : '') + '</div>' +
+      (x.mod ? '<p class="meta">복지로에서 확인한 날 ' + esc(x.mod) + '</p>' : '') + '</div></details>';
 }
 function supState() {
   var z = state.sup || (state.sup = { tab: 'n', life: 'all', need: 'all', online: false, area: null, focus: null });
@@ -625,7 +629,7 @@ function renderSupport() {
   var card = function (x) { return supCard(x, z.focus === x.id); };
   el.innerHTML =
     '<h2>마음 지원 제도</h2>' +
-    '<p class="lead">상담이나 치료 비용이 마음에 걸릴 때 기댈 수 있는 제도예요. 다 읽지 않아도 괜찮아요.</p>' +
+    '<p class="lead">비용이 마음에 걸릴 때 기댈 수 있는 제도예요. 눌러서 펼쳐 보세요.</p>' +
     '<div class="snow"><button id="tofree"><b>정신건강복지센터</b><span>조건 없이 무료 상담</span></button><a href="tel:109"><b>109</b><span>24시간 상담전화</span></a></div>' +
     '<div class="seg stab" role="tablist" aria-label="지원 범위">' +
       '<button role="tab" data-stab="n" aria-selected="' + (z.tab === 'n') + '" aria-pressed="' + (z.tab === 'n') + '">나라 지원 <small>' + natAll.length + '</small></button>' +
@@ -641,9 +645,9 @@ function renderSupport() {
         : '이 조건에 맞는 지원이 없어요. 조건을 하나 풀어 보세요.') + '</p>') +
     (special.length ? '<h3 class="ssub">이런 상황이라면</h3><p class="meta">특정한 일을 겪었거나 가족을 돌보는 분을 위한 지원이에요.</p>' + special.map(card).join('') : '') +
     '</div>' +
-    '<p class="caution">출처: 복지로(한국사회보장정보원) 공공데이터. 지원 조건과 예산·일정은 바뀔 수 있어요. 신청하기 전에 문의처로 한 번 확인해 주세요.</p>' +
+    '<p class="caution">출처: 복지로(한국사회보장정보원). 조건·일정은 바뀔 수 있어 신청 전에 문의처로 확인해 주세요.</p>' +
     '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>';
-  if (z.focus) { var f = $('sup-' + z.focus); z.focus = null; if (f) setTimeout(function () { f.scrollIntoView({ block: 'start', behavior: 'smooth' }); f.classList.add('hl'); }, 60); }
+  if (z.focus) { var f = $('sup-' + z.focus); z.focus = null; if (f) setTimeout(function () { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); f.classList.add('hl'); }, 60); }
 }
 // 목록을 옆으로 밀면 나라 ↔ 지역이 바뀐다 (세로 스크롤과 헷갈리지 않게 가로로 충분히 밀었을 때만)
 (function () {
@@ -662,7 +666,7 @@ var SUP_REC = [[], [/정신건강복지센터/, /바우처/], [/바우처/, /정
 // 추천 칸에서는 행정 문장 대신 쉬운 한 줄을 쓴다
 var SUP_REC_LINE = [[/정신건강복지센터/, '조건 없이 무료로 상담을 시작하고, 필요한 지원도 이어 줘요'], [/바우처/, '전문 심리상담을 바우처로 받을 수 있어요. 소득에 따라 본인부담이 달라요'],
   [/자살예방/, '죽고 싶은 마음이 들 때 상담과 위기 지원을 받을 수 있는 곳이에요'], [/치료비/, '정신건강의학과 치료비 부담을 덜어 주는 지원이에요']];
-function supRecLine(x) { for (var i = 0; i < SUP_REC_LINE.length; i++) if (SUP_REC_LINE[i][0].test(x.n)) return SUP_REC_LINE[i][1]; return supShort(x, 60); }
+function supRecLine(x, n) { for (var i = 0; i < SUP_REC_LINE.length; i++) if (SUP_REC_LINE[i][0].test(x.n)) return SUP_REC_LINE[i][1]; return supShort(x, n || 60); }
 function supRecHTML(tier) {
   if (!hasSupport() || !SUP_REC[tier] || !SUP_REC[tier].length) return '';
   var nat = state.support.filter(function (x) { return x.k === 'n'; }), pick = [];
