@@ -93,6 +93,7 @@ function status(f, n) {
   if (HOLIDAYS[todayKST()]) return f.h.holOff ? { k: 'off', t: '오늘은 공휴일 휴무' } : { k: 'holiday', t: '공휴일이라 운영 여부를 전화로 확인해 주세요' };
   if (h === '?') return { k: 'unknown', t: '오늘 운영시간은 전화로 확인해 주세요' };
   if (!h) return { k: 'off', t: '오늘 쉬는 날' };
+  if (h[0] === '00:00' && h[1] === '24:00') return { k: 'open', t: '24시간 ' + word };
   if (t < mins(h[0])) return { k: 'before', t: word + ' 전 · ' + h[0] + ' 시작' };
   if (t >= mins(h[1])) return { k: 'closed', t: '오늘 ' + word + ' 끝' };
   var l = d === 'sat' ? f.h.lunchSat : (d === 'sun' ? null : f.h.lunch);
