@@ -26,11 +26,13 @@ var SUP = {
   DETAIL_MAX_NAT: 60,   // 한 번 실행에서 받을 상세 수 (중앙 하루 100회 한도 안)
   DETAIL_MAX_LOC: 120,
   TEXT_MAX: 1500,
-  TIME_MS: 4 * 60 * 1000,   // Apps Script 6분 제한보다 여유 있게 끊고 저장
+  TIME_MS: 4 * 60 * 1000,
+  DETAIL_VER: 2,            // 상세에서 받는 항목이 늘면 올린다 → 예전에 받은 행도 다시 받는다   // Apps Script 6분 제한보다 여유 있게 끊고 저장
   HEAD: ['사업ID', '구분', '사업명', '요약', '쉬운 설명', '담당', '시도', '시군구', '생애주기', '가구상황', '관심주제',
          '지원주기', '제공유형', '신청방법', '온라인신청', '대표문의', '상세링크', '최종수정일',
          '지원대상', '선정기준', '지원내용', '신청방법 상세', '문의처', '상세받은날',
-         '추천', '노출', '상태', '처음수집일', '마지막확인일', '메모'],
+         '추천', '노출', '상태', '처음수집일', '마지막확인일', '메모',
+         '시행시작일', '시행종료일', '기준연도', '상세버전'],     // 뒤 4칸은 2026-11-18에 추가 (기존 탭은 다음 실행 때 머리글이 자동으로 붙음)
   KEEP: ['쉬운 설명', '노출', '메모', '처음수집일']   // 자동 갱신이 건드리지 않는 칸
 };
 
@@ -115,13 +117,13 @@ function refreshSupport() {
   // 상세: 아직 안 받은 것만, 한도와 시간 안에서. 15건마다 중간 저장
   var cnt = { n: 0, l: 0 }, left = 0;
   rows.forEach(function (r) {
-    if (!r[0] || r[col['상세받은날']] || r[col['상태']] === '목록에서 빠짐') return;
+    if (!r[0] || (r[col['상세받은날']] && +r[col['상세버전']] >= SUP.DETAIL_VER) || r[col['상태']] === '목록에서 빠짐') return;
     var k = r[col['구분']] === '전국' ? 'n' : 'l';
     if (Date.now() - started > SUP.TIME_MS || cnt[k] >= (k === 'n' ? SUP.DETAIL_MAX_NAT : SUP.DETAIL_MAX_LOC)) { left++; return; }
     var d = k === 'n' ? detailNational_(key, r[0]) : detailLocal_(key, r[0]); cnt[k]++;
     if (d) {
       Object.keys(d).forEach(function (h) { if (col[h] != null && d[h] !== undefined) r[col[h]] = sv_(d[h]); });
-      r[col['상세받은날']] = today;
+      r[col['상세받은날']] = today; r[col['상세버전']] = SUP.DETAIL_VER;
     }
     if ((cnt.n + cnt.l) % 15 === 0) save();
   });
@@ -191,24 +193,28 @@ function detailNational_(key, id) {
   if (!x) return null;
   var o = kids_(x);
   return { '지원대상': o.tgtrDtlCn || '', '선정기준': o.slctCritCn || '', '지원내용': o.alwServCn || '',
-    '신청방법 상세': listText_(x, 'applmetList'), '문의처': listText_(x, 'inqplCtadrList'), '대표문의': o.rprsCtadr || undefined };
+    '신청방법 상세': listText_(x, 'applmetList'), '문의처': listText_(x, 'inqplCtadrList'), '대표문의': o.rprsCtadr || undefined,
+    '기준연도': o.crtrYr || '' };
 }
 function detailLocal_(key, id) {
   var x = supGet_(SUP.LOC + '/LcgvWelfaredetailed', { serviceKey: key, servId: id });
   if (!x) return null;
   var o = kids_(x);
   return { '지원대상': o.sprtTrgtCn || '', '선정기준': o.slctCritCn || '', '지원내용': o.alwServCn || '',
-    '신청방법 상세': o.aplyMtdCn || '', '문의처': listText_(x, 'inqplCtadrList') };
+    '신청방법 상세': o.aplyMtdCn || '', '문의처': listText_(x, 'inqplCtadrList'),
+    '시행시작일': o.enfcBgngYmd || '', '시행종료일': o.enfcEndYmd || '' };
 }
 
 /* ───────── 웹으로 내보내기: doGet(type=support) ───────── */
 function support_() {
-  var out = [];
+  var out = [], today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
   if (!SpreadsheetApp.getActive().getSheetByName(SUP.SHEET)) return { kind: 'support', asOf: new Date().toISOString(), count: 0, items: [] };
   table_(SUP.SHEET).forEach(function (r) {
     if (r['노출'] !== true && String(r['노출']).toUpperCase() !== 'TRUE') return;
     if (r['상태'] === '목록에서 빠짐') return;
-    out.push({ id: r['사업ID'], k: r['구분'] === '전국' ? 'n' : 'l', n: r['사업명'], s: r['쉬운 설명'] || r['요약'],
+    var end = fmtYmd_(r['시행종료일']);
+    if (end && end < today) return;                           // 시행 기간이 끝난 사업은 내보내지 않는다
+    out.push({ start: fmtYmd_(r['시행시작일']), end: end, yr: String(r['기준연도'] || '').replace(/\D/g, '').slice(0, 4), id: r['사업ID'], k: r['구분'] === '전국' ? 'n' : 'l', n: r['사업명'], s: r['쉬운 설명'] || r['요약'],
       org: r['담당'], sd: r['시도'], sg: r['시군구'], life: r['생애주기'], on: r['온라인신청'] === '가능' ? 1 : 0,
       tel: r['대표문의'], url: r['상세링크'], mod: fmtYmd_(r['마지막확인일']),   // 전국 API는 수정일 대신 최초등록일만 줘서, 우리가 확인한 날을 쓴다
       tgt: r['지원대상'], crit: r['선정기준'], ben: r['지원내용'], how: r['신청방법 상세'] || r['신청방법'], inq: r['문의처'] });
@@ -258,7 +264,14 @@ function fmtYmd_(v) {
 }
 function supSheet_() {
   var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(SUP.SHEET);
-  if (sh) return sh;
+  if (sh) {                                                  // 예전 탭: 새로 생긴 칸의 머리글만 이어 붙인다 (기존 칸 순서는 그대로)
+    var w = sh.getLastColumn(), h = sh.getRange(1, 1, 1, Math.max(w, 1)).getValues()[0];
+    if (w < SUP.HEAD.length && SUP.HEAD.slice(0, w).join('|') === h.join('|')) {
+      if (sh.getMaxColumns() < SUP.HEAD.length) sh.insertColumnsAfter(sh.getMaxColumns(), SUP.HEAD.length - sh.getMaxColumns());
+      sh.getRange(1, w + 1, 1, SUP.HEAD.length - w).setValues([SUP.HEAD.slice(w)]).setFontWeight('bold').setBackground('#EEF2EC');
+    }
+    return sh;
+  }
   sh = ss.insertSheet(SUP.SHEET);
   sh.getRange(1, 1, 1, SUP.HEAD.length).setValues([SUP.HEAD]).setFontWeight('bold').setBackground('#EEF2EC');
   sh.setFrozenRows(1); sh.setFrozenColumns(3);

@@ -243,7 +243,7 @@ function renderPanel() {
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
       (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳' + (state.pending ? ' · 최신 정보 확인 중…' : '')) + '</p>' +
-    (hidden ? '<p class="meta">요양·재활 시설, 정신과 진료가 확인되지 않은 병의원 ' + hidden.toLocaleString() + '곳은 접어 두었어요. 필요하면 \'그 밖의 기관도 보기\'를 눌러 주세요.</p>' : '') +
+    (hidden ? '<p class="meta">요양·재활 시설 등 ' + hidden.toLocaleString() + '곳은 접어 뒀어요. 위 \'그 밖의 기관도 보기\'로 볼 수 있어요.</p>' : '') +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
     (hasSupport() ? '<button class="textbtn" data-go="support">상담 비용이 걱정된다면, 마음 지원 제도 보기 ›</button>' : '') +
@@ -385,7 +385,7 @@ function renderCheck() {
     '<div class="score"><strong>' + band(t, score) + '</strong><p>' + GUIDE.p + '</p>' +
     '<span class="num">' + t.name + ' · ' + max + '점 중 ' + score + '점. 점수는 상태를 판정하는 게 아니라, 도움을 요청해 볼 만한지 알려 주는 신호예요.</span></div>' +
     GUIDE.b.map(function (x) { return '<button class="' + x[2] + '" id="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
-    (tier >= 1 && hasSupport() ? '<button class="ghost" id="tosupport">상담 비용이 걱정된다면, 마음 지원 제도</button>' : '') +
+    supRecHTML(tier) +
     bandTable(t, score) + sumHTML(t, score) +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
     '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
@@ -402,7 +402,21 @@ function supOrder(a, b) {
   var r = function (x) { for (var i = 0; i < SUP_FIRST.length; i++) if (SUP_FIRST[i].test(x.n)) return i; return 99; };
   return r(a) - r(b) || String(a.n).localeCompare(String(b.n), 'ko');
 }
-var SUP_LIFE = [['all', '전체'], ['청소년', '청소년'], ['청년', '청년'], ['중장년', '중장년'], ['노년', '어르신']];
+var SUP_LIFE = [['all', '누구나'], ['아동|청소년', '아동·청소년'], ['청년', '청년'], ['중장년', '중장년'], ['노년', '어르신']];
+// 무엇이 필요한지: 이름·요약·지원내용의 말로 나눈다 (한 사업이 여러 갈래에 들 수 있음)
+var SUP_NEED = [['all', '전체'], ['talk', '상담받고 싶어요', /상담|심리|치유|마음/], ['cost', '치료비가 걱정돼요', /치료비|의료비|치료관리비|진료비|검진|바우처|본인부담/],
+  ['phone', '전화·온라인으로', /전화|1388|1366|온라인/], ['family', '가족·보호자', /가족|부모|자녀|보호자|양육/], ['crisis', '위기·피해를 겪었어요', /자살|폭력|피해|학대|위기|노숙|중독|알코올|재난/]];
+function supNeedOf(x) { var t = [x.n, x.s, x.ben].join(' '); return SUP_NEED.slice(1).filter(function (c) { return c[2].test(t); }).map(function (c) { return c[0]; }); }
+function supDays(end) { var t = Date.parse(end + 'T23:59:59+09:00'); return isNaN(t) ? null : Math.ceil((t - Date.now()) / 864e5); }
+function supPeriod(x) {
+  if (x.end) {
+    var d = supDays(x.end), soon = d != null && d <= 30;
+    return '<p class="speriod' + (soon ? ' soon' : '') + '">' + (x.start ? esc(x.start) + ' ~ ' : '') + esc(x.end) + '까지' + (soon ? ' · 곧 끝나요' : '') + '</p>';
+  }
+  if (x.start) return '<p class="speriod">' + esc(x.start) + '부터</p>';
+  if (x.yr) return '<p class="speriod">' + esc(x.yr) + '년 기준 · 해마다 다시 열리는 사업이에요</p>';
+  return '';
+}
 function loadSupport() {
   var use = function (j) { if (j && j.kind === 'support' && Array.isArray(j.items)) { state.support = j.items; supportReady(); return true; } return false; };
   var fb = getJSON(CFG.SUPPORT_FALLBACK_URL || 'data/support-fallback.json', 15000).then(use).catch(function () { return false; });
@@ -416,6 +430,7 @@ function supportReady() {
   document.querySelectorAll('.supgate').forEach(function (el) { el.hidden = !hasSupport(); });
   if (state.view === 'support') renderSupport();
   if (state.view === 'map' && !state.sel) renderPanel();
+  if (state.view === 'check' && state.quiz) renderCheck();
 }
 // 복지로 시도명 → 사이트 지역 이름 (2026년 전남·광주는 '전남광주통합특별시' 하나로 나온다)
 function sidoKeys(n) {
@@ -437,8 +452,9 @@ function supText(t) { return esc(String(t || '').trim()).replace(/\n+/g, '<br>')
 function supTel(t) {   // 문의처 문장 안의 전화번호에 바로 걸기 링크를 붙인다
   return supText(t).replace(/(\b0\d{1,2}-\d{3,4}-\d{4}\b|\b1\d{3}-\d{4}\b)/g, function (m) { return '<a href="tel:' + m.replace(/-/g, '') + '">' + m + '</a>'; });
 }
-function supCard(x) {
-  var s = String(x.s || '').trim(), short = s.length > 110 ? s.slice(0, 108).replace(/\s+\S*$/, '') + '…' : s;
+function supShort(x, n) { var s = String(x.s || '').trim(); return s.length > n ? s.slice(0, n - 2).replace(/\s+\S*$/, '') + '…' : s; }
+function supCard(x, open) {
+  var short = supShort(x, 110);
   var tel = /^[\d-]{3,14}$/.test(String(x.tel || '').trim()) ? String(x.tel).trim() : '';
   var where = x.k === 'l' ? [x.sd, x.sg].filter(Boolean).join(' ') : '';
   var orgHasWhere = where && x.org && x.org.indexOf(x.sd) === 0;
@@ -446,40 +462,84 @@ function supCard(x) {
   var rows = [['누가 받을 수 있나요', x.tgt], ['선정 기준', x.crit], ['무엇을 지원하나요', x.ben], ['어떻게 신청하나요', x.how]]
     .filter(function (r) { return r[1]; }).map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + supText(r[1]) + '</dd>'; }).join('') +
     (x.inq ? '<dt>문의</dt><dd>' + supTel(x.inq) + '</dd>' : '');
-  return '<article class="scard"><h4>' + esc(x.n) + '</h4>' + (short ? '<p>' + esc(short) + '</p>' : '') +
+  return '<article class="scard" id="sup-' + esc(x.id) + '"><h4>' + esc(x.n) + '</h4>' + supPeriod(x) + (short ? '<p>' + esc(short) + '</p>' : '') +
     (tags.length ? '<p class="stags">' + tags.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
-    (rows ? '<details class="sdet"><summary>조건과 신청 방법 보기</summary><dl>' + rows + '</dl></details>' : '') +
+    (rows ? '<details class="sdet"' + (open ? ' open' : '') + '><summary>조건과 신청 방법 보기</summary><dl>' + rows + '</dl></details>' : '') +
     '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
       (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 자세히 보기</a>' : '') + '</div>' +
     (x.mod ? '<p class="meta">복지로에서 확인한 날 ' + esc(x.mod) + '</p>' : '') + '</article>';
 }
-function renderSupport() {
-  var el = $('supbox'), all = state.support || [], z = state.sup || (state.sup = { life: 'all', area: null });
+function supState() {
+  var z = state.sup || (state.sup = { tab: 'n', life: 'all', need: 'all', online: false, area: null, focus: null });
   if (!z.area) z.area = nearestSido();
-  var fitLife = function (x) { return z.life === 'all' || !x.life || x.life.indexOf(z.life) >= 0; };
-  var nat = all.filter(function (x) { return x.k === 'n' && fitLife(x); }).sort(supOrder);
-  var natCommon = nat.filter(function (x) { return !SUP_SPECIAL.test(x.n); }), natSpecial = nat.filter(function (x) { return SUP_SPECIAL.test(x.n); });
-  var loc = all.filter(function (x) { return x.k === 'l' && sidoKeys(x.sd).indexOf(z.area) >= 0 && fitLife(x); });
-  var natAll = all.filter(function (x) { return x.k === 'n'; }).length;
+  return z;
+}
+function supFilter(list, z) {
+  return list.filter(function (x) {
+    if (z.life !== 'all' && x.life && !new RegExp(z.life).test(x.life)) return false;
+    if (z.need !== 'all' && supNeedOf(x).indexOf(z.need) < 0) return false;
+    if (z.online && !x.on) return false;
+    return true;
+  });
+}
+function renderSupport() {
+  var el = $('supbox'), all = state.support || [], z = supState();
+  var natAll = all.filter(function (x) { return x.k === 'n'; }).sort(supOrder);
+  var locAll = all.filter(function (x) { return x.k === 'l' && sidoKeys(x.sd).indexOf(z.area) >= 0; });
+  var list = supFilter(z.tab === 'n' ? natAll : locAll, z);
+  var common = list.filter(function (x) { return z.tab === 'l' || !SUP_SPECIAL.test(x.n); }), special = z.tab === 'n' ? list.filter(function (x) { return SUP_SPECIAL.test(x.n); }) : [];
   var areas = SIDO.map(function (s) { return '<option' + (s[0] === z.area ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
+  var chips = function (arr, key, label) {
+    return '<div class="sfrow"><span class="sflabel">' + label + '</span><div class="filters" role="group" aria-label="' + label + '">' +
+      arr.map(function (c) { return '<button class="chip" data-sf="' + key + '" data-v="' + c[0] + '" aria-pressed="' + (z[key] === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
+  };
+  var on = z.life !== 'all' || z.need !== 'all' || z.online;
+  var card = function (x) { return supCard(x, z.focus === x.id); };
   el.innerHTML =
     '<h2>마음 지원 제도</h2>' +
-    '<p class="lead">상담이나 치료 비용이 마음에 걸릴 때 기댈 수 있는 제도를 모았어요. 다 읽지 않아도 괜찮아요. 맞을 것 같은 하나만 열어 보세요.</p>' +
-    '<section class="ssec"><h3>조건 없이 바로</h3>' +
-      '<ul class="ways">' +
-        '<li><button id="tofree"><b>정신건강복지센터</b><small>누구나 비용 부담 없이 상담을 시작할 수 있어요. 필요하면 다른 지원도 이어 줘요</small><i aria-hidden="true">›</i></button></li>' +
-        '<li><a class="waylink" href="tel:109"><b>109 자살예방 상담전화</b><small>24시간, 무료예요. 지금 많이 힘들다면 여기부터</small><i aria-hidden="true">›</i></a></li>' +
-      '</ul></section>' +
-    (natAll > 6 ? '<div class="filters wrap" role="group" aria-label="누구를 위한 지원">' + SUP_LIFE.map(function (c) { return '<button class="chip" data-slife="' + c[0] + '" aria-pressed="' + (z.life === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div>' : '') +
-    (natCommon.length ? '<section class="ssec"><h3>누구나 신청할 수 있는 나라 지원</h3>' + natCommon.map(supCard).join('') + '</section>' : '') +
-    '<section class="ssec"><h3>우리 지역 지원</h3>' +
-      '<label class="sarea">지역 <select id="suparea" aria-label="지역 고르기">' + areas + '</select></label>' +
-      (loc.length ? loc.map(supCard).join('')
-        : '<p class="note">' + esc(z.area) + '에서 따로 올라온 마음 지원 사업은 아직 찾지 못했어요. 위의 나라 지원과 정신건강복지센터는 어느 지역에서나 이용할 수 있어요.</p>') +
-    '</section>' +
-    (natSpecial.length ? '<section class="ssec"><h3>이런 상황이라면</h3><p class="meta">특정한 일을 겪었거나 가족을 돌보는 분을 위한 지원이에요.</p>' + natSpecial.map(supCard).join('') + '</section>' : '') +
+    '<p class="lead">상담이나 치료 비용이 마음에 걸릴 때 기댈 수 있는 제도예요. 다 읽지 않아도 괜찮아요.</p>' +
+    '<div class="snow"><button id="tofree"><b>정신건강복지센터</b><span>조건 없이 무료 상담</span></button><a href="tel:109"><b>109</b><span>24시간 상담전화</span></a></div>' +
+    '<div class="seg stab" role="tablist" aria-label="지원 범위">' +
+      '<button role="tab" data-stab="n" aria-selected="' + (z.tab === 'n') + '" aria-pressed="' + (z.tab === 'n') + '">나라 지원 <small>' + natAll.length + '</small></button>' +
+      '<button role="tab" data-stab="l" aria-selected="' + (z.tab === 'l') + '" aria-pressed="' + (z.tab === 'l') + '">우리 지역 <small>' + locAll.length + '</small></button></div>' +
+    (z.tab === 'l' ? '<label class="sarea">지역 <select id="suparea" aria-label="지역 고르기">' + areas + '</select></label>' : '') +
+    '<details class="sfilter"' + (on || z.fopen ? ' open' : '') + '><summary>조건 골라 보기' + (on ? ' · 적용 중' : '') + '</summary>' +
+      chips(SUP_NEED, 'need', '필요한 것') + chips(SUP_LIFE, 'life', '누구') +
+      '<div class="sfrow"><span class="sflabel">신청</span><div class="filters"><button class="chip" data-sf="online" aria-pressed="' + z.online + '">온라인으로 신청할 수 있는 것만</button>' +
+      (on ? '<button class="textbtn" id="sfreset">조건 지우기</button>' : '') + '</div></div></details>' +
+    '<div class="slist" id="slist">' +
+    (common.length ? common.map(card).join('')
+      : '<p class="note">' + (z.tab === 'l' && !locAll.length ? esc(z.area) + '에서 따로 올라온 마음 지원 사업은 아직 찾지 못했어요. 나라 지원과 정신건강복지센터는 어느 지역에서나 이용할 수 있어요.'
+        : '이 조건에 맞는 지원이 없어요. 조건을 하나 풀어 보세요.') + '</p>') +
+    (special.length ? '<h3 class="ssub">이런 상황이라면</h3><p class="meta">특정한 일을 겪었거나 가족을 돌보는 분을 위한 지원이에요.</p>' + special.map(card).join('') : '') +
+    '</div>' +
     '<p class="caution">출처: 복지로(한국사회보장정보원) 공공데이터. 지원 조건과 예산·일정은 바뀔 수 있어요. 신청하기 전에 문의처로 한 번 확인해 주세요.</p>' +
     '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>';
+  if (z.focus) { var f = $('sup-' + z.focus); z.focus = null; if (f) setTimeout(function () { f.scrollIntoView({ block: 'start', behavior: 'smooth' }); f.classList.add('hl'); }, 60); }
+}
+// 목록을 옆으로 밀면 나라 ↔ 지역이 바뀐다 (세로 스크롤과 헷갈리지 않게 가로로 충분히 밀었을 때만)
+(function () {
+  var sx = 0, sy = 0, on = false;
+  document.addEventListener('touchstart', function (e) { var l = e.target.closest && e.target.closest('#slist'); on = !!l; if (on) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (!on || !state.sup) return; on = false;
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+    var t = dx < 0 ? 'l' : 'n'; if (t === state.sup.tab) return;
+    state.sup.tab = t; renderSupport(); $('v-support').scrollTop = 0;
+  }, { passive: true });
+})();
+/* 검진 점수에 맞춰 이어 볼 지원 (자격 판단이 아니라 '열어 볼 만한 것' 안내) */
+var SUP_REC = [[], [/정신건강복지센터/, /바우처/], [/바우처/, /정신건강복지센터/, /치료비/], [/자살예방/, /바우처/, /치료비/]];
+function supRecHTML(tier) {
+  if (!hasSupport() || !SUP_REC[tier] || !SUP_REC[tier].length) return '';
+  var nat = state.support.filter(function (x) { return x.k === 'n'; }), pick = [];
+  SUP_REC[tier].forEach(function (re) { var x = nat.filter(function (y) { return re.test(y.n) && pick.indexOf(y) < 0; })[0]; if (x) pick.push(x); });
+  if (!pick.length) return '';
+  return '<div class="srec"><h3>이어서 열어 볼 만한 지원</h3>' +
+    pick.map(function (x) { return '<button class="srecb" data-supid="' + esc(x.id) + '"><b>' + esc(x.n) + '</b><small>' + esc(supShort(x, 60)) + '</small><i aria-hidden="true">›</i></button>'; }).join('') +
+    '<p class="meta">자가검진 점수만으로 신청 자격이 정해지지는 않아요. 바우처처럼 기관의 의뢰서가 필요한 지원도 있어서, 정신건강복지센터에 먼저 물어보면 길을 안내받을 수 있어요.</p>' +
+    '<button class="textbtn" data-go="support">지원 제도 전체 보기 ›</button></div>';
 }
 
 /* ───────── 마음 통계 ───────── */
@@ -948,7 +1008,7 @@ function go(v) {
   if (v === 'check') renderCheck();
   if (v === 'rest') { renderRest(); $('v-rest').scrollTop = 0; }
   if (v === 'ask') { renderAsk(); $('v-ask').scrollTop = 0; }
-  if (v === 'support') { renderSupport(); $('v-support').scrollTop = 0; }
+  if (v === 'support') { var fz = state.sup && state.sup.focus; renderSupport(); if (!fz) $('v-support').scrollTop = 0; }
   if (v === 'facts') {
     if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('factsbox').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
     renderFacts();
@@ -1007,7 +1067,10 @@ document.addEventListener('click', function (e) {
   if (b.id === 'tofacts') return go('facts');
   if (b.id === 'toguide') return go('guide');
   if (b.id === 'tosupport') return go('support');
-  if (b.dataset.slife) { state.sup.life = b.dataset.slife; return renderSupport(); }
+  if (b.dataset.stab) { supState().tab = b.dataset.stab; return renderSupport(); }
+  if (b.dataset.sf) { var z = supState(); z.fopen = true; if (b.dataset.sf === 'online') z.online = !z.online; else z[b.dataset.sf] = z[b.dataset.sf] === b.dataset.v ? 'all' : b.dataset.v; return renderSupport(); }
+  if (b.id === 'sfreset') { var z2 = supState(); z2.life = 'all'; z2.need = 'all'; z2.online = false; return renderSupport(); }
+  if (b.dataset.supid) { var z3 = supState(), x = (state.support || []).filter(function (y) { return y.id === b.dataset.supid; })[0]; z3.tab = x && x.k === 'l' ? 'l' : 'n'; z3.life = 'all'; z3.need = 'all'; z3.online = false; z3.focus = b.dataset.supid; return go('support'); }
   if (b.id === 'tobreath') { go('rest'); return; }
   if (b.id === 'sprout') return petSprout();
   if (b.id === 'sprouthard') { go('rest'); state.rest = { k: 'words', feel: 'hard' }; renderRest(); return; }
@@ -1029,7 +1092,7 @@ document.addEventListener('click', function (e) {
   if (b.dataset.feel) { rz.feel = b.dataset.feel; return restDraw(); }
 });
 document.addEventListener('change', function (e) {
-  if (e.target.id === 'suparea') { state.sup.area = e.target.value; return renderSupport(); }
+  if (e.target.id === 'suparea') { supState().area = e.target.value; return renderSupport(); }
   if (e.target.id === 'sido' && e.target.value !== '') {
     state.sido = +e.target.value; var s = SIDO[state.sido]; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false; afterOrigin();
   }
