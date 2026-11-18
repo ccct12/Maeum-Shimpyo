@@ -395,6 +395,13 @@ function renderCheck() {
 /* ───────── 마음 지원 제도 (복지로 공공데이터 · 시트에서 사람이 고른 것만) ─────────
  * 처음 오는 사람이 행정 문장에 지치지 않게: 조건 없이 바로 쓸 수 있는 곳 → 나라 지원 → 우리 지역 순서로,
  * 카드에는 이름과 한 줄만 두고 조건·신청 방법은 접어 둔다. */
+// 특정 상황·대상을 위한 사업은 '이런 상황이라면'으로 따로 묶어, 처음 보는 사람에게 일반 지원이 먼저 보이게 한다
+var SUP_SPECIAL = /노숙|보훈|산재|입양|위탁|발달장애|가정폭력|성폭력|여성긴급|북한|범죄|학대|디지털미디어|알코올/;
+var SUP_FIRST = [/바우처/, /정신건강복지센터/, /자살예방/, /치료비/, /1388/, /청소년/, /가족/, /중독/];
+function supOrder(a, b) {
+  var r = function (x) { for (var i = 0; i < SUP_FIRST.length; i++) if (SUP_FIRST[i].test(x.n)) return i; return 99; };
+  return r(a) - r(b) || String(a.n).localeCompare(String(b.n), 'ko');
+}
 var SUP_LIFE = [['all', '전체'], ['청소년', '청소년'], ['청년', '청년'], ['중장년', '중장년'], ['노년', '어르신']];
 function loadSupport() {
   var use = function (j) { if (j && j.kind === 'support' && Array.isArray(j.items)) { state.support = j.items; supportReady(); return true; } return false; };
@@ -434,7 +441,8 @@ function supCard(x) {
   var s = String(x.s || '').trim(), short = s.length > 110 ? s.slice(0, 108).replace(/\s+\S*$/, '') + '…' : s;
   var tel = /^[\d-]{3,14}$/.test(String(x.tel || '').trim()) ? String(x.tel).trim() : '';
   var where = x.k === 'l' ? [x.sd, x.sg].filter(Boolean).join(' ') : '';
-  var tags = [where, x.org && x.org !== where ? x.org : '', x.life ? '대상: ' + x.life.replace(/,\s*/g, ', ') : '', x.on ? '온라인 신청 가능' : ''].filter(Boolean);
+  var orgHasWhere = where && x.org && x.org.indexOf(x.sd) === 0;
+  var tags = [orgHasWhere ? '' : where, x.org && x.org !== where ? x.org : '', x.life ? '대상: ' + x.life.replace(/,\s*/g, ', ') : '', x.on ? '온라인 신청 가능' : ''].filter(Boolean);
   var rows = [['누가 받을 수 있나요', x.tgt], ['선정 기준', x.crit], ['무엇을 지원하나요', x.ben], ['어떻게 신청하나요', x.how]]
     .filter(function (r) { return r[1]; }).map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + supText(r[1]) + '</dd>'; }).join('') +
     (x.inq ? '<dt>문의</dt><dd>' + supTel(x.inq) + '</dd>' : '');
@@ -449,7 +457,8 @@ function renderSupport() {
   var el = $('supbox'), all = state.support || [], z = state.sup || (state.sup = { life: 'all', area: null });
   if (!z.area) z.area = nearestSido();
   var fitLife = function (x) { return z.life === 'all' || !x.life || x.life.indexOf(z.life) >= 0; };
-  var nat = all.filter(function (x) { return x.k === 'n' && fitLife(x); });
+  var nat = all.filter(function (x) { return x.k === 'n' && fitLife(x); }).sort(supOrder);
+  var natCommon = nat.filter(function (x) { return !SUP_SPECIAL.test(x.n); }), natSpecial = nat.filter(function (x) { return SUP_SPECIAL.test(x.n); });
   var loc = all.filter(function (x) { return x.k === 'l' && sidoKeys(x.sd).indexOf(z.area) >= 0 && fitLife(x); });
   var natAll = all.filter(function (x) { return x.k === 'n'; }).length;
   var areas = SIDO.map(function (s) { return '<option' + (s[0] === z.area ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
@@ -462,12 +471,13 @@ function renderSupport() {
         '<li><a class="waylink" href="tel:109"><b>109 자살예방 상담전화</b><small>24시간, 무료예요. 지금 많이 힘들다면 여기부터</small><i aria-hidden="true">›</i></a></li>' +
       '</ul></section>' +
     (natAll > 6 ? '<div class="filters wrap" role="group" aria-label="누구를 위한 지원">' + SUP_LIFE.map(function (c) { return '<button class="chip" data-slife="' + c[0] + '" aria-pressed="' + (z.life === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div>' : '') +
-    (nat.length ? '<section class="ssec"><h3>나라에서 하는 지원</h3>' + nat.map(supCard).join('') + '</section>' : '') +
+    (natCommon.length ? '<section class="ssec"><h3>누구나 신청할 수 있는 나라 지원</h3>' + natCommon.map(supCard).join('') + '</section>' : '') +
     '<section class="ssec"><h3>우리 지역 지원</h3>' +
       '<label class="sarea">지역 <select id="suparea" aria-label="지역 고르기">' + areas + '</select></label>' +
       (loc.length ? loc.map(supCard).join('')
         : '<p class="note">' + esc(z.area) + '에서 따로 올라온 마음 지원 사업은 아직 찾지 못했어요. 위의 나라 지원과 정신건강복지센터는 어느 지역에서나 이용할 수 있어요.</p>') +
     '</section>' +
+    (natSpecial.length ? '<section class="ssec"><h3>이런 상황이라면</h3><p class="meta">특정한 일을 겪었거나 가족을 돌보는 분을 위한 지원이에요.</p>' + natSpecial.map(supCard).join('') + '</section>' : '') +
     '<p class="caution">출처: 복지로(한국사회보장정보원) 공공데이터. 지원 조건과 예산·일정은 바뀔 수 있어요. 신청하기 전에 문의처로 한 번 확인해 주세요.</p>' +
     '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>';
 }
