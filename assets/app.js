@@ -246,6 +246,7 @@ function renderPanel() {
     (hidden ? '<p class="meta">요양·재활 시설, 정신과 진료가 확인되지 않은 병의원 ' + hidden.toLocaleString() + '곳은 접어 두었어요. 필요하면 \'그 밖의 기관도 보기\'를 눌러 주세요.</p>' : '') +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
+    (hasSupport() ? '<button class="textbtn" data-go="support">상담 비용이 걱정된다면, 마음 지원 제도 보기 ›</button>' : '') +
     '<p class="caution">운영시간은 공공데이터 기준이라 실제와 다를 수 있어요. 몇 년 전 자료가 섞여 있으니 가기 전에 전화로 확인해 주세요.</p>' +
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' +
     footHTML();
@@ -384,10 +385,91 @@ function renderCheck() {
     '<div class="score"><strong>' + band(t, score) + '</strong><p>' + GUIDE.p + '</p>' +
     '<span class="num">' + t.name + ' · ' + max + '점 중 ' + score + '점. 점수는 상태를 판정하는 게 아니라, 도움을 요청해 볼 만한지 알려 주는 신호예요.</span></div>' +
     GUIDE.b.map(function (x) { return '<button class="' + x[2] + '" id="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+    (tier >= 1 && hasSupport() ? '<button class="ghost" id="tosupport">상담 비용이 걱정된다면, 마음 지원 제도</button>' : '') +
     bandTable(t, score) + sumHTML(t, score) +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
     '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
     '<p class="caution">' + TEST_SRC + '</p>';
+}
+
+/* ───────── 마음 지원 제도 (복지로 공공데이터 · 시트에서 사람이 고른 것만) ─────────
+ * 처음 오는 사람이 행정 문장에 지치지 않게: 조건 없이 바로 쓸 수 있는 곳 → 나라 지원 → 우리 지역 순서로,
+ * 카드에는 이름과 한 줄만 두고 조건·신청 방법은 접어 둔다. */
+var SUP_LIFE = [['all', '전체'], ['청소년', '청소년'], ['청년', '청년'], ['중장년', '중장년'], ['노년', '어르신']];
+function loadSupport() {
+  var use = function (j) { if (j && j.kind === 'support' && Array.isArray(j.items)) { state.support = j.items; supportReady(); return true; } return false; };
+  var fb = getJSON(CFG.SUPPORT_FALLBACK_URL || 'data/support-fallback.json', 15000).then(use).catch(function () { return false; });
+  if (!CFG.DATA_URL) return;
+  getJSON(CFG.DATA_URL + (CFG.DATA_URL.indexOf('?') < 0 ? '?' : '&') + 'type=support&v=' + new Date().toISOString().slice(0, 13), 20000)
+    .then(function (j) { if (!use(j)) return fb; }).catch(function () { return fb; });
+}
+function hasSupport() { return !!(state.support && state.support.length); }
+// 데이터가 있을 때만 다른 화면에서 이 화면으로 오는 길을 보여 준다
+function supportReady() {
+  document.querySelectorAll('.supgate').forEach(function (el) { el.hidden = !hasSupport(); });
+  if (state.view === 'support') renderSupport();
+  if (state.view === 'map' && !state.sel) renderPanel();
+}
+// 복지로 시도명 → 사이트 지역 이름 (2026년 전남·광주는 '전남광주통합특별시' 하나로 나온다)
+function sidoKeys(n) {
+  n = String(n || '');
+  if (/전남광주|전라남도.*광주/.test(n)) return ['전남', '광주'];
+  var M = [['서울', '서울'], ['부산', '부산'], ['대구', '대구'], ['인천', '인천'], ['광주', '광주'], ['대전', '대전'], ['울산', '울산'], ['세종', '세종'],
+    ['경기', '경기'], ['강원', '강원'], ['충청북|충북', '충북'], ['충청남|충남', '충남'], ['전라북|전북', '전북'], ['전라남|전남', '전남'],
+    ['경상북|경북', '경북'], ['경상남|경남', '경남'], ['제주', '제주']];
+  for (var i = 0; i < M.length; i++) if (new RegExp('^(' + M[i][0] + ')').test(n)) return [M[i][1]];
+  return [];
+}
+function nearestSido() {
+  if (state.sido != null) return SIDO[state.sido][0];
+  var o = state.origin, best = 0, bd = 1e12;
+  SIDO.forEach(function (s, i) { var d = hav(o.lat, o.lng, s[1], s[2]); if (d < bd) { bd = d; best = i; } });
+  return SIDO[best][0];
+}
+function supText(t) { return esc(String(t || '').trim()).replace(/\n+/g, '<br>'); }
+function supTel(t) {   // 문의처 문장 안의 전화번호에 바로 걸기 링크를 붙인다
+  return supText(t).replace(/(\b0\d{1,2}-\d{3,4}-\d{4}\b|\b1\d{3}-\d{4}\b)/g, function (m) { return '<a href="tel:' + m.replace(/-/g, '') + '">' + m + '</a>'; });
+}
+function supCard(x) {
+  var s = String(x.s || '').trim(), short = s.length > 110 ? s.slice(0, 108).replace(/\s+\S*$/, '') + '…' : s;
+  var tel = /^[\d-]{3,14}$/.test(String(x.tel || '').trim()) ? String(x.tel).trim() : '';
+  var where = x.k === 'l' ? [x.sd, x.sg].filter(Boolean).join(' ') : '';
+  var tags = [where, x.org && x.org !== where ? x.org : '', x.life ? '대상: ' + x.life.replace(/,\s*/g, ', ') : '', x.on ? '온라인 신청 가능' : ''].filter(Boolean);
+  var rows = [['누가 받을 수 있나요', x.tgt], ['선정 기준', x.crit], ['무엇을 지원하나요', x.ben], ['어떻게 신청하나요', x.how]]
+    .filter(function (r) { return r[1]; }).map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + supText(r[1]) + '</dd>'; }).join('') +
+    (x.inq ? '<dt>문의</dt><dd>' + supTel(x.inq) + '</dd>' : '');
+  return '<article class="scard"><h4>' + esc(x.n) + '</h4>' + (short ? '<p>' + esc(short) + '</p>' : '') +
+    (tags.length ? '<p class="stags">' + tags.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
+    (rows ? '<details class="sdet"><summary>조건과 신청 방법 보기</summary><dl>' + rows + '</dl></details>' : '') +
+    '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
+      (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 자세히 보기</a>' : '') + '</div>' +
+    (x.mod ? '<p class="meta">복지로 기준 ' + esc(x.mod) + '</p>' : '') + '</article>';
+}
+function renderSupport() {
+  var el = $('supbox'), all = state.support || [], z = state.sup || (state.sup = { life: 'all', area: null });
+  if (!z.area) z.area = nearestSido();
+  var fitLife = function (x) { return z.life === 'all' || !x.life || x.life.indexOf(z.life) >= 0; };
+  var nat = all.filter(function (x) { return x.k === 'n' && fitLife(x); });
+  var loc = all.filter(function (x) { return x.k === 'l' && sidoKeys(x.sd).indexOf(z.area) >= 0 && fitLife(x); });
+  var natAll = all.filter(function (x) { return x.k === 'n'; }).length;
+  var areas = SIDO.map(function (s) { return '<option' + (s[0] === z.area ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
+  el.innerHTML =
+    '<h2>마음 지원 제도</h2>' +
+    '<p class="lead">상담이나 치료 비용이 마음에 걸릴 때 기댈 수 있는 제도를 모았어요. 다 읽지 않아도 괜찮아요. 맞을 것 같은 하나만 열어 보세요.</p>' +
+    '<section class="ssec"><h3>조건 없이 바로</h3>' +
+      '<ul class="ways">' +
+        '<li><button id="tofree"><b>정신건강복지센터</b><small>누구나 비용 부담 없이 상담을 시작할 수 있어요. 필요하면 다른 지원도 이어 줘요</small><i aria-hidden="true">›</i></button></li>' +
+        '<li><a class="waylink" href="tel:109"><b>109 자살예방 상담전화</b><small>24시간, 무료예요. 지금 많이 힘들다면 여기부터</small><i aria-hidden="true">›</i></a></li>' +
+      '</ul></section>' +
+    (natAll > 6 ? '<div class="filters wrap" role="group" aria-label="누구를 위한 지원">' + SUP_LIFE.map(function (c) { return '<button class="chip" data-slife="' + c[0] + '" aria-pressed="' + (z.life === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div>' : '') +
+    (nat.length ? '<section class="ssec"><h3>나라에서 하는 지원</h3>' + nat.map(supCard).join('') + '</section>' : '') +
+    '<section class="ssec"><h3>우리 지역 지원</h3>' +
+      '<label class="sarea">지역 <select id="suparea" aria-label="지역 고르기">' + areas + '</select></label>' +
+      (loc.length ? loc.map(supCard).join('')
+        : '<p class="note">' + esc(z.area) + '에서 따로 올라온 마음 지원 사업은 아직 찾지 못했어요. 위의 나라 지원과 정신건강복지센터는 어느 지역에서나 이용할 수 있어요.</p>') +
+    '</section>' +
+    '<p class="caution">출처: 복지로(한국사회보장정보원) 공공데이터. 지원 조건과 예산·일정은 바뀔 수 있어요. 신청하기 전에 문의처로 한 번 확인해 주세요.</p>' +
+    '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>';
 }
 
 /* ───────── 마음 통계 ───────── */
@@ -842,7 +924,7 @@ function renderAsk() {
 }
 
 /* ───────── 화면 전환 ───────── */
-var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide', 'ask'];
+var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide', 'ask', 'support'];
 function go(v) {
   if (state.view !== v || !go.done) hit('view:' + v); go.done = true;
   if (state.view === 'rest' && v !== 'rest') { stopRest(); stopSound(); state.rest = null; }
@@ -856,6 +938,7 @@ function go(v) {
   if (v === 'check') renderCheck();
   if (v === 'rest') { renderRest(); $('v-rest').scrollTop = 0; }
   if (v === 'ask') { renderAsk(); $('v-ask').scrollTop = 0; }
+  if (v === 'support') { renderSupport(); $('v-support').scrollTop = 0; }
   if (v === 'facts') {
     if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('factsbox').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
     renderFacts();
@@ -913,6 +996,8 @@ document.addEventListener('click', function (e) {
   if (b.id === 'tofree' || b.id === 'factsfree') return showFreeOnMap();
   if (b.id === 'tofacts') return go('facts');
   if (b.id === 'toguide') return go('guide');
+  if (b.id === 'tosupport') return go('support');
+  if (b.dataset.slife) { state.sup.life = b.dataset.slife; return renderSupport(); }
   if (b.id === 'tobreath') { go('rest'); return; }
   if (b.id === 'sprout') return petSprout();
   if (b.id === 'sprouthard') { go('rest'); state.rest = { k: 'words', feel: 'hard' }; renderRest(); return; }
@@ -934,6 +1019,7 @@ document.addEventListener('click', function (e) {
   if (b.dataset.feel) { rz.feel = b.dataset.feel; return restDraw(); }
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'suparea') { state.sup.area = e.target.value; return renderSupport(); }
   if (e.target.id === 'sido' && e.target.value !== '') {
     state.sido = +e.target.value; var s = SIDO[state.sido]; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false; afterOrigin();
   }
@@ -960,5 +1046,6 @@ function renderPanelKeepFocus() { if (document.activeElement && document.activeE
   loadKakao();
   var first = true;
   loadData(function () { if (state.view === 'map' && !state.sel) renderPanel(); drawMap(first); first = false; });
+  loadSupport();
 })();
 })();

@@ -180,6 +180,24 @@ main{min-height:0;position:relative}
 .score p{font-size:16px}
 
 /* 처음이라면 */
+.support .ssec{display:flex;flex-direction:column;gap:12px}
+.support h3{font-size:21px}
+.ways a.waylink{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px;color:inherit;text-decoration:none;border-bottom:1px solid var(--line);padding:18px 2px}
+.ways a.waylink:hover b{text-decoration:underline;text-decoration-color:var(--apricot);text-underline-offset:6px}
+.scard{background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px}
+.scard h4{font-family:var(--f-display);font-weight:400;font-size:20px;line-height:1.4}
+.scard p{margin:0}
+.stags{display:flex;flex-wrap:wrap;gap:6px}
+.stags span{font-size:12.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.sdet summary{cursor:pointer;color:var(--green);font-weight:600;font-size:15px;padding:4px 0}
+.sdet dl{margin:8px 0 0;display:flex;flex-direction:column;gap:4px;font-size:14.5px}
+.sdet dt{font-weight:700;margin-top:8px}
+.sdet dd{margin:0;color:var(--ink)}
+.sact{display:flex;flex-wrap:wrap;gap:8px 16px}
+.sact a{color:var(--green);font-weight:600;text-underline-offset:4px}
+.sarea{display:flex;align-items:center;gap:10px;font-weight:600}
+.sarea select{font:inherit;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.sbtns{display:flex;flex-direction:column;gap:10px}
 .guide section{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:8px}
 .guide h3{font-size:21px}
 .guide ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
@@ -403,3 +421,4 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .homefoot{font-size:14px;color:var(--muted)}
 .homefoot .textbtn,.foot .textbtn,.note .textbtn{font-size:inherit;padding:0}
 .foot .textbtn{align-self:flex-start;margin-top:4px}
+.supgate[hidden]{display:none}

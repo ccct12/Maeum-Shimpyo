@@ -234,12 +234,14 @@ function text_(el, name) { var c = el.getChild(name); return c ? c.getText().tri
 function listText_(root, name) {
   return root.getChildren(name).map(function (e) {
     return e.getChildren().map(function (c) { return c.getText().trim(); })
-      .filter(function (t) { return t && !/^\d{1,3}$/.test(t); }).join(' : ');
+      .filter(function (t) { return t && !/^\d{1,3}$/.test(t) && !/(연락처목록|기관목록)$/.test(t); }).join(' : ');
   }).filter(String).join('\n');
 }
 function sv_(v) {
   if (typeof v !== 'string') return v;
-  v = v.replace(/\r/g, '').trim();
+  v = v.replace(/\r\n?/g, '\n').replace(/&(rsquo|lsquo|rdquo|ldquo|sim|middot|nbsp|amp|lt|gt|quot|#39);/g, function (m, k) {
+    return { rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', sim: '~', middot: '·', nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[k];
+  }).replace(/[ \t]+\n/g, '\n').trim();
   if (v.length > SUP.TEXT_MAX) v = v.slice(0, SUP.TEXT_MAX) + '…';
   return /^[=+\-@]/.test(v) ? "'" + v : v;                  // 수식으로 해석되지 않게
 }

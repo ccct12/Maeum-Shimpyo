@@ -10,6 +10,7 @@ window.MAEUM_CONFIG = {
 
   FALLBACK_URL: 'data/facilities-fallback.json',
   STATS_URL: 'data/stats.json',
+  SUPPORT_FALLBACK_URL: 'data/support-fallback.json',
 
   // 위치를 정하지 않았을 때 기준점
   DEFAULT_ORIGIN: { lat: 37.5663, lng: 126.9779, label: '서울시청' },

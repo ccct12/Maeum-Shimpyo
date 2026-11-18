@@ -23,3 +23,16 @@ kst = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
 out = {'asOf': kst, 'fallback': True, 'count': len(items), 'items': items}
 json.dump(out, open('data/facilities-fallback.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print(f'예비 데이터 갱신: {len(items)}곳 (그 밖의 기관 {sum(1 for f in items if f.get("g"))}곳)')
+
+# 마음 지원 제도(지원사업 탭에서 노출한 것). Apps Script가 아직 예전 버전이면 기관 목록이 돌아오므로 kind로 구분한다.
+try:
+    with urllib.request.urlopen(url.replace('type=facilities', 'type=support'), timeout=120) as r:
+        s = json.load(r)
+    if s.get('kind') == 'support' and isinstance(s.get('items'), list):
+        s['asOf'] = kst
+        json.dump(s, open('data/support-fallback.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+        print(f'지원 제도 갱신: {len(s["items"])}건')
+    else:
+        print('지원 제도: Apps Script가 아직 type=support를 모르는 버전이라 건너뜀')
+except Exception as e:  # 지원 제도 실패가 기관 예비 데이터 갱신을 막지 않게
+    print('지원 제도 갱신 건너뜀:', e)
