@@ -26,6 +26,7 @@ var SUP = {
   DETAIL_MAX_NAT: 60,   // 한 번 실행에서 받을 상세 수 (중앙 하루 100회 한도 안)
   DETAIL_MAX_LOC: 120,
   TEXT_MAX: 1500,
+  TIME_MS: 4 * 60 * 1000,   // Apps Script 6분 제한보다 여유 있게 끊고 저장
   HEAD: ['사업ID', '구분', '사업명', '요약', '쉬운 설명', '담당', '시도', '시군구', '생애주기', '가구상황', '관심주제',
          '지원주기', '제공유형', '신청방법', '온라인신청', '대표문의', '상세링크', '최종수정일',
          '지원대상', '선정기준', '지원내용', '신청방법 상세', '문의처', '상세받은날',
@@ -97,30 +98,36 @@ function refreshSupport() {
     if (r[0] && got[k] && !seen[r[0]]) r[col['상태']] = '목록에서 빠짐';
   });
 
-  // 상세: 아직 안 받은 것만, 한도 안에서
-  var cnt = { n: 0, l: 0 };
-  rows.forEach(function (r) {
-    if (Date.now() - started > CFG.TIME_LIMIT_MS) return;
-    if (!r[0] || r[col['상세받은날']] || r[col['상태']] === '목록에서 빠짐') return;
-    var k = r[col['구분']] === '전국' ? 'n' : 'l';
-    if (cnt[k] >= (k === 'n' ? SUP.DETAIL_MAX_NAT : SUP.DETAIL_MAX_LOC)) return;
-    var d = k === 'n' ? detailNational_(key, r[0]) : detailLocal_(key, r[0]); cnt[k]++;
-    if (!d) return;
-    Object.keys(d).forEach(function (h) { if (col[h] != null && d[h] !== undefined) r[col[h]] = sv_(d[h]); });
-    r[col['상세받은날']] = today;
-  });
-
-  rows.sort(function (a, b) {                              // 노출 → 추천 높음 → 전국 → 이름 순
-    var s = function (r) { return (r[col['노출']] === true ? 0 : 4) + (r[col['추천']] === '높음' ? 0 : 2) + (r[col['구분']] === '전국' ? 0 : 1); };
-    return s(a) - s(b) || String(a[col['사업명']]).localeCompare(String(b[col['사업명']]), 'ko');
-  });
-  if (rows.length) {
+  // 목록 결과를 먼저 시트에 적는다. 상세를 받다 시간이 다 돼도 목록은 남는다.
+  function save() {
+    rows.sort(function (a, b) {                            // 노출 → 추천 높음 → 전국 → 이름 순
+      var s = function (r) { return (r[col['노출']] === true ? 0 : 4) + (r[col['추천']] === '높음' ? 0 : 2) + (r[col['구분']] === '전국' ? 0 : 1); };
+      return s(a) - s(b) || String(a[col['사업명']]).localeCompare(String(b[col['사업명']]), 'ko');
+    });
+    if (!rows.length) return;
     sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, rows.length), H.length).clearContent();
     sh.getRange(2, 1, rows.length, H.length).setValues(rows);
     sh.getRange(2, col['노출'] + 1, rows.length, 1).insertCheckboxes();
+    SpreadsheetApp.flush();
   }
+  save();
+
+  // 상세: 아직 안 받은 것만, 한도와 시간 안에서. 15건마다 중간 저장
+  var cnt = { n: 0, l: 0 }, left = 0;
+  rows.forEach(function (r) {
+    if (!r[0] || r[col['상세받은날']] || r[col['상태']] === '목록에서 빠짐') return;
+    var k = r[col['구분']] === '전국' ? 'n' : 'l';
+    if (Date.now() - started > SUP.TIME_MS || cnt[k] >= (k === 'n' ? SUP.DETAIL_MAX_NAT : SUP.DETAIL_MAX_LOC)) { left++; return; }
+    var d = k === 'n' ? detailNational_(key, r[0]) : detailLocal_(key, r[0]); cnt[k]++;
+    if (d) {
+      Object.keys(d).forEach(function (h) { if (col[h] != null && d[h] !== undefined) r[col[h]] = sv_(d[h]); });
+      r[col['상세받은날']] = today;
+    }
+    if ((cnt.n + cnt.l) % 15 === 0) save();
+  });
+  save();
   CacheService.getScriptCache().remove('support_n');
-  var msg = '지원사업: 전국 ' + (got.n ? got.n.length : '실패') + '건, 지역 ' + (got.l ? got.l.length : '실패') + '건 확인. 새로 ' + added + '건, 바뀜 ' + changed + '건. 상세 ' + (cnt.n + cnt.l) + '건 받음.';
+  var msg = '지원사업: 전국 ' + (got.n ? got.n.length : '실패') + '건, 지역 ' + (got.l ? got.l.length : '실패') + '건 확인. 새로 ' + added + '건, 바뀜 ' + changed + '건. 상세 ' + (cnt.n + cnt.l) + '건 받음.' + (left ? ' 남은 상세 ' + left + '건은 ②를 한 번 더 누르면 이어서 받아요.' : '');
   console.log(msg); supAlert_(msg);
 }
 
