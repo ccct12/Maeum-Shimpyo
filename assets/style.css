@@ -1,3 +1,5 @@
+/* hidden 속성은 어떤 display 규칙보다 우선 (숨 고르기 원이 미리 보이던 문제) */
+[hidden]{display:none!important}
 /* 마음쉼표
  * 색: 쑥빛 종이 + 솔잎 먹색, 살구색은 쉼표와 위기상담 밑줄에만 쓴다.
  * 모바일(기본): 한 번에 한 가지만 보이게. PC(900px~): 찾기 화면만 목록·지도 2단.
@@ -5,7 +7,7 @@
 :root{
   --paper:#F1F4EF; --surface:#FBFCFA; --ink:#1E2A25; --muted:#586861; --line:#D3DBD4;
   --green:#2B6650; --green-soft:#DCE8E0; --on-green:#FBFCFA; --apricot:#E59A5A;
-  --ok:#1F7A54; --ok-soft:#D8EDE1; --warn:#85560C; --warn-soft:#F5E7CB; --off:#66736D; --off-soft:#E3E8E4;
+  --ok:#196847; --ok-soft:#D8EDE1; --warn:#85560C; --warn-soft:#F5E7CB; --off:#55625C; --off-soft:#E3E8E4;
   --band:#1E2A25; --band-ink:#F1F4EF;
   --s1:#1F8A63; --s2:#C2702E; --grid:#E1E7E2;
   --f-display:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
@@ -204,7 +206,8 @@ main{min-height:0;position:relative}
 .snow button,.snow a{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--green-soft);border:0;border-radius:14px;padding:14px 16px;color:var(--ink);text-decoration:none}
 .snow b{font-weight:700;font-size:16px}
 .snow span{font-size:13px;color:var(--muted)}
-.stab{position:sticky;top:0;z-index:3}
+/* 고정 탭: 화면 위 여백(.page padding)만큼 끌어올려 틈 없이 붙이고, 둘레를 바탕색으로 감싸 뒤 목록이 비치지 않게 */
+.stab{position:sticky;top:-24px;z-index:3;box-shadow:0 0 0 8px var(--paper)}
 .stab small{font-size:12px;color:var(--muted);margin-left:2px}
 .sfilter{border:1.5px solid var(--line);border-radius:14px;padding:4px 14px;background:var(--surface)}
 .sfilter summary{cursor:pointer;font-weight:600;padding:10px 0;font-size:15px}
@@ -268,6 +271,7 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   #v-map.nomap .panel{flex:1;border-right:0;align-items:center}
   #v-map.nomap .panel>*{width:100%;max-width:600px}
   .page{padding:48px 28px 64px}
+  .stab{top:-48px}
   .home{padding-top:6vh}
   .actions{flex-direction:row;flex-wrap:wrap}
   .actions>*{flex:1 1 auto}
@@ -351,7 +355,7 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .sound button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
 .say[hidden]{display:none}
 
-.hint{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.hint{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap}
 .hint[hidden]{display:none}
 .say .textbtn{text-align:left}
 
@@ -491,7 +495,9 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   /* 위기 띠·머리는 한 줄로 가볍게 (번호는 그대로) */
   .top{padding:8px 16px}
   .brand{font-size:20px}
-  .crisis{flex-wrap:nowrap;gap:14px;padding:7px 16px;font-size:13.5px;overflow-x:auto;scrollbar-width:none}
+  .crisis{flex-wrap:nowrap;gap:14px;padding:0 16px;font-size:13.5px;overflow-x:auto;scrollbar-width:none}
+  /* 위기 전화는 손이 떨려도 누를 수 있게 높이 44px */
+  .crisis a{display:inline-flex;align-items:center;min-height:44px}
   .crisis::-webkit-scrollbar{display:none}
   .crisis span:first-child{display:none}
   .crisis .x{display:none}

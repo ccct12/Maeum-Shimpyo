@@ -91,7 +91,7 @@ function status(f, n) {
   if (!f.h) return { k: 'unknown', t: '운영시간 정보 없음' };
   var d = DAYS[n[0]], h = f.h[d], t = n[1], word = f.c === 'p' ? '운영' : '진료';
   if (HOLIDAYS[todayKST()]) return f.h.holOff ? { k: 'off', t: '오늘은 공휴일 휴무' } : { k: 'holiday', t: '공휴일이라 운영 여부를 전화로 확인해 주세요' };
-  if (h === '?') return { k: 'unknown', t: '오늘 운영시간은 전화로 확인해 주세요' };
+  if (h === '?') return { k: 'unknown', t: f.tel ? '오늘 운영시간은 전화로 확인해 주세요' : '오늘 운영시간 정보 없음' };
   if (!h) return { k: 'off', t: '오늘 쉬는 날' };
   if (h[0] === '00:00' && h[1] === '24:00') return { k: 'open', t: '24시간 ' + word };
   if (t < mins(h[0])) return { k: 'before', t: word + ' 전 · ' + h[0] + ' 시작' };
@@ -364,7 +364,7 @@ function detailHTML(f, n) {
     if (f.h.lunchSat) rows += '<div><span>토요일 점심</span><span>' + f.h.lunchSat[0] + ' – ' + f.h.lunchSat[1] + '</span></div>';
     if (f.h.holOff) rows += '<div><span>공휴일</span><span>쉬는 날</span></div>';
     if (f.h.note) rows += '<div><span>접수 안내</span><span>' + esc(f.h.note) + '</span></div>';
-  } else rows = '<div><span>운영시간</span><span>아직 정보가 없어요. 전화로 확인해 주세요</span></div>';
+  } else rows = '<div><span>운영시간</span><span>' + (f.tel ? '아직 정보가 없어요. 전화로 확인해 주세요' : '아직 정보가 없어요') + '</span></div>';
   var tel = String(f.tel || '').replace(/[^0-9]/g, '');
   var kakao = 'https://map.kakao.com/link/to/' + encodeURIComponent(f.n) + ',' + f.lat + ',' + f.lng;
   var naver = 'https://map.naver.com/p/search/' + encodeURIComponent(f.n);
@@ -378,13 +378,14 @@ function detailHTML(f, n) {
     (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') +
     '<div class="actions">' + (tel ? '<a class="call" href="tel:' + tel + '">전화하기 ' + esc(f.tel) + '</a>' : '') +
       '<div class="pair"><a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div></div>' +
-    (tel ? '<p class="note">전화가 부담스러우면 이렇게만 말해도 돼요. "처음인데요, 상담 예약하고 싶어요."</p>' : '') +
+    (tel ? '<p class="note">전화가 부담스러우면 이렇게만 말해도 돼요. "처음인데요, 상담 예약하고 싶어요."</p>'
+      : '<p class="note">아직 전화번호 정보가 없어요. 위 네이버지도에서 기관 이름으로 찾으면 연락처가 나오는 경우가 많아요.</p>') +
     '<div class="rows">' + rows + '</div>' +
     '<div class="rows"><div><span>주소</span><span>' + esc(f.a) + ' <button class="textbtn" id="copy" data-copy="' + esc(f.a) + '">복사</button></span></div>' +
       (web ? '<div><span>홈페이지</span><span><a href="' + esc(web) + '" target="_blank" rel="noopener nofollow">열기</a></span></div>' : '') +
       '<div><span>정보 출처</span><span>' + esc(srcLabel(f)) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
-    (old ? '<p class="note">' + old + '년 자료라 지금은 옮겼거나 운영하지 않을 수 있어요. 가기 전에 꼭 전화로 확인해 주세요.</p>' : '') +
-    '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 전화로 확인해 주세요.</p>' +
+    (old ? '<p class="note">' + old + '년 자료라 지금은 옮겼거나 운영하지 않을 수 있어요. 가기 전에 꼭 ' + (tel ? '전화로 ' : '연락처를 찾아 ') + '확인해 주세요.</p>' : '') +
+    '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 ' + (tel ? '전화로 ' : '') + '확인해 주세요.</p>' +
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' + reportHTML(f) + '</div>';
 }
 
@@ -486,7 +487,8 @@ function renderCheck() {
     '<details class="rmore"><summary>점수 기준 · 상담할 때 보여 줄 요약</summary>' + bandTable(t, score) + sumHTML(t, score) + '</details>' +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
     '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
-    '<p class="caution">' + TEST_SRC + '</p>';
+    '<p class="caution">' + TEST_SRC + '</p>' +
+    '<button class="textbtn" data-go="ask">문항이나 결과 문구가 마음에 걸렸다면 알려 주세요 ›</button>';
 }
 
 /* ───────── 마음 지원 제도 (복지로 공공데이터 · 시트에서 사람이 고른 것만) ─────────
@@ -600,7 +602,7 @@ function renderSupport() {
   el.innerHTML =
     '<h2>마음 지원 제도</h2>' +
     '<p class="lead">비용이 마음에 걸릴 때 기댈 수 있는 제도예요. 눌러서 펼쳐 보세요.</p>' +
-    '<div class="snow"><button id="tofree"><b>정신건강복지센터</b><span>조건 없이 무료 상담</span></button><a href="tel:109"><b>109</b><span>24시간 상담전화</span></a></div>' +
+    '<div class="snow"><button id="tofree"><b>정신건강복지센터</b><span>조건 없이 무료 상담</span></button><a href="tel:129"><b>129 보건복지상담센터</b><span>지원 제도 전화 문의</span></a></div>' +
     '<div class="seg stab" role="tablist" aria-label="지원 범위">' +
       '<button role="tab" data-stab="n" aria-selected="' + (z.tab === 'n') + '" aria-pressed="' + (z.tab === 'n') + '">나라 지원 <small>' + natAll.length + '</small></button>' +
       '<button role="tab" data-stab="l" aria-selected="' + (z.tab === 'l') + '" aria-pressed="' + (z.tab === 'l') + '">우리 지역 <small>' + locAll.length + '</small></button></div>' +
@@ -616,7 +618,8 @@ function renderSupport() {
     (special.length ? '<h3 class="ssub">이런 상황이라면</h3><p class="meta">특정한 일을 겪었거나 가족을 돌보는 분을 위한 지원이에요.</p>' + special.map(card).join('') : '') +
     '</div>' +
     '<p class="caution">출처: 복지로(한국사회보장정보원). 조건·일정은 바뀔 수 있어 신청 전에 문의처로 확인해 주세요.</p>' +
-    '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>';
+    '<div class="sbtns"><button class="ghost" id="tomap">가까운 기관 보기</button><button class="ghost" data-go="guide">병원이 처음이라 걱정된다면</button></div>' +
+    '<button class="textbtn" data-go="ask">설명이 틀렸거나 빠진 제도가 있다면 알려 주세요 ›</button>';
   if (z.focus) { var f = $('sup-' + z.focus); z.focus = null; if (f) setTimeout(function () { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); f.classList.add('hl'); }, 60); }
 }
 // 목록을 옆으로 밀면 나라 ↔ 지역이 바뀐다 (세로 스크롤과 헷갈리지 않게 가로로 충분히 밀었을 때만)
@@ -634,8 +637,10 @@ function renderSupport() {
 /* 검진 점수에 맞춰 이어 볼 지원 (자격 판단이 아니라 '열어 볼 만한 것' 안내) */
 var SUP_REC = [[], [/정신건강복지센터/, /바우처/], [/바우처/, /정신건강복지센터/, /치료비/], [/자살예방/, /바우처/, /치료비/]];
 // 추천 칸에서는 행정 문장 대신 쉬운 한 줄을 쓴다
-var SUP_REC_LINE = [[/정신건강복지센터/, '조건 없이 무료로 상담을 시작하고, 필요한 지원도 이어 줘요'], [/바우처/, '전문 심리상담을 바우처로 받을 수 있어요. 소득에 따라 본인부담이 달라요'],
-  [/자살예방/, '죽고 싶은 마음이 들 때 상담과 위기 지원을 받을 수 있는 곳이에요'], [/치료비/, '정신건강의학과 치료비 부담을 덜어 주는 지원이에요']];
+// 이름이 정확히 맞는 사업에만 쓴다 (비슷한 이름의 다른 사업에 같은 문구가 붙지 않게)
+var SUP_REC_LINE = [[/^정신건강복지센터 운영/, '조건 없이 무료로 상담을 시작하고, 필요한 지원도 이어 줘요'],
+  [/^정신건강 심리상담 바우처/, '전문 심리상담 8회를 바우처로 받아요. 신청하려면 센터·병원 의뢰서나 국가검진 결과가 필요해요'],
+  [/^자살예방센터 운영/, '죽고 싶은 마음이 들 때 상담과 위기 지원을 받을 수 있는 곳이에요'], [/^정신질환자 치료비 지원/, '정신건강의학과 치료비 부담을 덜어 주는 지원이에요']];
 function supRecLine(x, n) { for (var i = 0; i < SUP_REC_LINE.length; i++) if (SUP_REC_LINE[i][0].test(x.n)) return SUP_REC_LINE[i][1]; return supShort(x, n || 60); }
 function supRecHTML(tier) {
   if (!hasSupport() || !SUP_REC[tier] || !SUP_REC[tier].length) return '';
@@ -685,7 +690,8 @@ function renderFacts() {
       '<p class="lead">혼자 버티는 사람이 그만큼 많다는 뜻이기도 해요. 가까운 무료 상담기관이 있는 줄 몰라서 못 가는 경우도 많아요.</p>' +
       '<p class="lead">정신건강복지센터 같은 공공기관에서는 비용 부담 없이 상담을 시작할 수 있어요.</p>' +
       '<button class="primary" id="factsfree">가까운 무료 공공 상담기관 보기</button></div>' +
-    '<p class="caution">통계는 조사마다 대상·연도·지역이 달라요. 각 수치 아래의 출처와 기준을 함께 봐 주세요.</p>';
+    '<p class="caution">통계는 조사마다 대상·연도·지역이 달라요. 각 수치 아래의 출처와 기준을 함께 봐 주세요.</p>' +
+    '<button class="textbtn" data-go="ask">숫자가 틀렸거나 더 보고 싶은 통계가 있다면 알려 주세요 ›</button>';
   lineChart();
   var sm = $('sidomore'); if (sm) sm.addEventListener('toggle', function () { if (sm.open) barChart(); });
 }
@@ -845,7 +851,8 @@ function renderRest() {
   if (!z) {
     el.innerHTML = '<h2>마음 쉬기</h2><p class="lead">지금 맞을 것 같은 것 하나만 골라 보세요. 숨에 집중하는 게 불편하면 다른 방법도 있어요.</p>' +
       '<div class="pick">' + Object.keys(REST).map(function (k) { return '<button data-rest="' + k + '"><b>' + REST[k].t + '</b><small>' + REST[k].s + '</small><i aria-hidden="true">›</i></button>'; }).join('') + '</div>' +
-      soundHTML() + '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 배경 소리는 기본으로 꺼져 있어요.</p>' + restSafe();
+      soundHTML() + '<p class="note">여기서 고르거나 답한 것은 이 기기 밖으로 보내지 않고 저장하지도 않아요. 배경 소리는 기본으로 꺼져 있어요.</p>' + restSafe() +
+      '<button class="textbtn" data-go="ask">더 있었으면 하는 방법이 있다면 알려 주세요 ›</button>';
     return;
   }
   if (z.feel) return renderFeel(el, z);
