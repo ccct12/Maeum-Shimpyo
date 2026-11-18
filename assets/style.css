@@ -450,3 +450,61 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .supgate[hidden]{display:none}
 
 .here small{font-size:12.5px;color:var(--muted);font-weight:400}
+
+/* ───────── 모바일 지도: 지도 전체 화면 + 아래 목록(카드/원형) + 올라오는 시트 ───────── */
+.mtop,.mmode,.mstrip,.mwheel,.mwfocus{display:none}
+@media (max-width:899px){
+  #v-map{position:relative;overflow:hidden}
+  #v-map .mapwrap{position:absolute;inset:0;flex:none;min-height:0}
+  .legend,.mapsize{display:none}
+  .research{top:62px}
+  .mtop{position:absolute;left:12px;right:12px;top:10px;z-index:6;display:flex;gap:8px}
+  .msearch{flex:1;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:#FBFCFA;color:#56645D;padding:12px 16px;font-size:15px;text-align:left;box-shadow:0 2px 10px rgba(20,30,26,.22)}
+  .msearch svg,.mloc svg{width:20px;height:20px;fill:none;stroke:#1E2A25;stroke-width:2;stroke-linecap:round;flex:none}
+  .mloc{flex:none;width:46px;height:46px;border:0;border-radius:50%;background:#FBFCFA;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(20,30,26,.22)}
+  .mmode{position:absolute;right:12px;top:64px;z-index:6;display:flex;background:#FBFCFA;border-radius:999px;padding:3px;box-shadow:0 1px 6px rgba(20,30,26,.2)}
+  .mmode button{border:0;background:none;border-radius:999px;padding:5px 12px;font-size:13px;color:#56645D}
+  .mmode button[aria-pressed="true"]{background:#14201B;color:#fff;font-weight:600}
+  /* 카드 */
+  .mstrip{position:absolute;left:0;right:0;bottom:12px;z-index:5;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 10vw;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .mstrip::-webkit-scrollbar{display:none}
+  .mcard,.mwfocus{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;background:#FBFCFA;color:#1E2A25;border:0;border-radius:18px;padding:14px 16px;box-shadow:0 4px 18px rgba(20,30,26,.22)}
+  .mcard{flex:0 0 80vw;scroll-snap-align:center}
+  .mcard .mark,.mwfocus .mark{grid-row:1/3}
+  .mcard b,.mwfocus b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mcard small,.mwfocus small{grid-column:2;font-size:13px;color:#56645D}
+  .mcard .st,.mwfocus .st{grid-column:2;justify-self:start}
+  .mcard.more,.mcard.none{flex-basis:60vw;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;font-weight:600}
+  .mcard.more small,.mcard.none small{font-weight:400}
+  .wheelmode .mstrip{display:none}
+  /* 원형: 오른쪽 아래 구석에 걸친 바퀴 */
+  .wheelmode .mwheel{display:block}
+  .mwheel{position:absolute;right:0;bottom:0;width:min(86vw,360px);height:min(86vw,360px);z-index:5;touch-action:none;overflow:hidden;user-select:none;-webkit-user-select:none}
+  .wdisc{position:absolute;right:-100%;bottom:-100%;width:200%;height:200%;border-radius:50%;background:radial-gradient(circle,rgba(251,252,250,.97) 0 30%,rgba(251,252,250,.9) 30% 100%);box-shadow:0 0 0 1px rgba(20,30,26,.08),0 -4px 24px rgba(20,30,26,.2)}
+  .witem{position:absolute;right:0;bottom:-17px;height:34px;padding:0 30% 0 8px;border:0;background:none;display:flex;align-items:center;transform-origin:right center}
+  .witem span{display:inline-flex;align-items:center;gap:6px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:#26332D}
+  .witem i{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;font-style:normal;font-size:11px;font-weight:700;color:#fff;background:#14523C;border-radius:50%}
+  .witem.p i{background:#B04A12;border-radius:6px}
+  .witem.on span{font-size:15px;font-weight:700;color:#14201B}
+  .witem.on i{width:26px;height:26px;box-shadow:0 0 0 3px rgba(229,154,90,.6)}
+  .mwheel.anim .witem{transition:transform .25s ease,opacity .25s}
+  .wheelmode .mwfocus{display:grid;position:absolute;left:12px;right:12px;bottom:calc(min(86vw,360px) + 10px);z-index:6}
+  .mwfocus .wbtns{grid-column:1/3;display:flex;gap:8px;margin-top:8px}
+  .mwfocus .btn{padding:7px 14px;font-size:14px}
+  .pin.focus .pn{width:38px;height:38px;font-size:15px;box-shadow:0 0 0 1.5px #14201B,0 0 0 6px rgba(229,154,90,.55)}
+  /* 목록·조건·상세는 아래에서 올라오는 시트 */
+  #v-map .panel{position:absolute;left:0;right:0;bottom:0;height:88%;z-index:8;border-radius:20px 20px 0 0;box-shadow:0 -6px 28px rgba(20,30,26,.22);transform:translateY(102%);visibility:hidden;transition:transform .28s ease,visibility 0s linear .28s;padding-top:0}
+  #v-map.sheet .panel{transform:none;visibility:visible;transition:transform .28s ease}
+  .sheethead{position:sticky;top:0;z-index:2;background:var(--paper);display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 4px;margin:0 -18px;}
+  .sheethead .grab{width:40px;height:4px;border-radius:2px;background:var(--line)}
+  .sheethead .textbtn{align-self:flex-end;margin-right:18px;font-size:14px}
+  #v-map.nomap .mtop,#v-map.nomap .mmode,#v-map.nomap .mstrip,#v-map.nomap .mwheel,#v-map.nomap .mwfocus{display:none}
+  #v-map.nomap .panel{position:static;height:auto;transform:none;visibility:visible;box-shadow:none;border-radius:0}
+  /* 위기 띠·머리는 한 줄로 가볍게 (번호는 그대로) */
+  .top{padding:8px 16px}
+  .brand{font-size:20px}
+  .crisis{flex-wrap:nowrap;gap:14px;padding:7px 16px;font-size:13.5px;overflow-x:auto;scrollbar-width:none}
+  .crisis::-webkit-scrollbar{display:none}
+  .crisis span:first-child{display:none}
+  .crisis .x{display:none}
+}

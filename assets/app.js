@@ -153,7 +153,7 @@ function initMap() { K.ready = true; if (mapVisible()) createMap(); }
 function createMap() {
   var km = window.kakao.maps;
   K.map = new km.Map($('kmap'), { center: new km.LatLng(state.origin.lat, state.origin.lng), level: 5 });
-  K.map.addControl(new km.ZoomControl(), km.ControlPosition.RIGHT);
+  if (!isMobile()) K.map.addControl(new km.ZoomControl(), km.ControlPosition.RIGHT);   // 모바일은 두 손가락으로 확대 (구석 목록과 겹치지 않게)
   $('kmap').removeAttribute('aria-hidden');
   km.event.addListener(K.map, 'dragend', function () { $('research').hidden = false; });
   drawMap(true);
@@ -167,17 +167,19 @@ function drawMap(fit) {
   var km = window.kakao.maps, n = now();
   var list = visible().slice(0, state.shown);
   K.pins.forEach(function (o) { o.setMap(null); });
-  K.pins = [];
+  K.pins = []; K.pinEl = {};
   list.forEach(function (f, i) {
     var sel = state.sel === f.id, b = document.createElement('button');
     var big = i < 10 || sel;                 // 가까운 10곳만 번호 핀, 나머지는 작은 점(겹침 방지)
     b.className = 'pin ' + f.c + (sel ? ' sel' : '') + (big ? '' : ' dot');
     b.setAttribute('aria-label', (i + 1) + '번 ' + f.n);
     b.innerHTML = (big ? '<span class="pn">' + (i + 1) + '</span>' : '<span class="pn"></span>') + (sel ? '<span class="pl">' + esc(f.n) + '</span>' : '');
-    b.onclick = function () { select(f.id); };
+    b.onclick = function () { var cur = MOB.list[MOB.focus]; if (isMobile() && !state.sel && (!cur || cur.id !== f.id) && mobFocusId(f.id)) return; select(f.id); };
+    K.pinEl[f.id] = b;
     var o = new km.CustomOverlay({ position: new km.LatLng(f.lat, f.lng), content: b, xAnchor: 0.5, yAnchor: big ? 1 : 0.5, zIndex: sel ? 50 : big ? 20 + (list.length - i) : 5, clickable: true });
     o.setMap(K.map); K.pins.push(o);
   });
+  if (isMobile() && !state.sel) focusPin(MOB.focus, false);
   if (K.me) K.me.setMap(null);
   var me = document.createElement('div'); me.className = 'me'; me.title = state.origin.label;
   K.me = new km.CustomOverlay({ position: new km.LatLng(state.origin.lat, state.origin.lng), content: me, zIndex: 4 });
@@ -196,9 +198,133 @@ function drawMap(fit) {
 }
 function relayout() { if (K.map) { K.map.relayout(); } }
 
+/* ───────── 모바일 지도: 지도 전체 화면 + 아래 목록 (카드 / 원형 시제품) ─────────
+ * 지도는 화면 전체, 기관은 아래 '카드'를 옆으로 넘기거나 구석의 '원형'을 돌려서 고른다.
+ * 고른 기관은 지도 핀이 커지고 지도가 따라간다. 목록·조건·상세는 아래에서 올라오는 시트로 연다. */
+var MOB = { mode: 'card', focus: 0, list: [], off: 0, drag: null };
+try { MOB.mode = localStorage.getItem('ms_mapmode') === 'wheel' ? 'wheel' : 'card'; } catch (e) {}
+function isMobile() { return window.matchMedia('(max-width:899px)').matches; }
+function setSheet(open) {
+  $('v-map').classList.toggle('sheet', !!open);
+  var s = $('sheetclose'); if (s) s.hidden = !open;
+}
+function openSheet() { if (!$('v-map').classList.contains('sheet')) { navPush({ sheet: 1 }); setSheet(true); $('panel').scrollTop = 0; } }
+function closeSheet() { var h = history.state || {}; if (h.sheet || h.sel) history.back(); else { state.sel = null; setSheet(false); renderPanel(); drawMap(false); } }
+function mobListData() { return visible().slice(0, 30); }
+function renderMob() {
+  if (!isMobile() || !state.data) return;
+  var list = mobListData(), keepId = MOB.list[MOB.focus] && MOB.list[MOB.focus].id;
+  MOB.list = list;
+  var i = keepId ? list.map(function (f) { return f.id; }).indexOf(keepId) : -1;
+  MOB.focus = i >= 0 ? i : 0; MOB.off = MOB.focus;
+  $('mmode').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mm === MOB.mode); });
+  $('v-map').classList.toggle('wheelmode', MOB.mode === 'wheel');
+  if (MOB.mode === 'card') renderStrip(); else renderWheel();
+}
+function mobItemHTML(f, i) {
+  var s = status(f, now());
+  return '<i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i><b>' + esc(f.n) + '</b>' +
+    '<small>' + esc(kindLabel(f)) + ' · ' + fmtDist(f._d) + '</small>' + (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>');
+}
+/* 카드: 가로로 넘기는 띠 */
+function renderStrip() {
+  var el = $('mstrip'), list = MOB.list;
+  el.innerHTML = list.length ? list.map(function (f, i) { return '<button class="mcard" data-mi="' + i + '" aria-label="' + (i + 1) + '번 ' + esc(f.n) + ', 자세히 보기">' + mobItemHTML(f, i) + '</button>'; }).join('') +
+      '<button class="mcard more" id="mlist">목록 전체 보기<small>조건 고르기 · ' + visible().length.toLocaleString() + '곳</small></button>'
+    : '<div class="mcard none"><b>이 조건에 맞는 곳이 없어요</b><small>목록에서 조건을 하나 풀어 보세요</small></div>';
+  focusPin(MOB.focus, false);
+}
+var stripT;
+document.addEventListener('scroll', function (e) {
+  if (e.target.id !== 'mstrip') return;
+  clearTimeout(stripT);
+  stripT = setTimeout(function () {
+    var el = $('mstrip'), mid = el.scrollLeft + el.clientWidth / 2, best = 0, bd = 1e9;
+    el.querySelectorAll('.mcard[data-mi]').forEach(function (c) { var d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = +c.dataset.mi; } });
+    if (best !== MOB.focus) { MOB.focus = best; focusPin(best, true); }
+  }, 90);
+}, true);
+/* 원형: 오른쪽 아래 구석에 걸친 바퀴. 가운데(45°)에 온 기관이 선택된다 */
+var WH = { step: 13, inner: 0.30 };
+function wheelGeo() { var el = $('mwheel'); return { w: el.clientWidth, h: el.clientHeight, R: el.clientWidth * 0.96 }; }
+function renderWheel() {
+  var el = $('mwheel'), list = MOB.list;
+  el.innerHTML = '<div class="wdisc" aria-hidden="true"></div><div class="wmark" aria-hidden="true"></div>' +
+    list.map(function (f, i) { return '<button class="witem ' + f.c + '" data-wi="' + i + '" tabindex="-1" aria-hidden="true"><span><i>' + (i + 1) + '</i>' + esc(f.n) + '</span></button>'; }).join('');
+  placeWheel(false); wheelFocusCard();
+}
+function placeWheel(anim) {
+  var el = $('mwheel'), g = wheelGeo(), list = MOB.list;
+  el.classList.toggle('anim', !!anim);
+  el.querySelectorAll('.witem').forEach(function (b) {
+    var i = +b.dataset.wi, th = 45 - (i - MOB.off) * WH.step, vis = th > -8 && th < 98;   // 0° = 왼쪽, 90° = 위
+    b.style.width = g.R + 'px';
+    b.style.transform = 'rotate(' + th + 'deg)';
+    b.style.opacity = vis ? (Math.abs(i - MOB.off) < 0.5 ? 1 : 0.72) : 0;
+    b.style.pointerEvents = vis ? 'auto' : 'none';
+    b.classList.toggle('on', Math.round(MOB.off) === i);
+  });
+}
+function wheelFocusCard() {
+  var f = MOB.list[MOB.focus], c = $('mwfocus');
+  if (!f) { c.innerHTML = '<b>이 조건에 맞는 곳이 없어요</b><small>목록에서 조건을 풀어 보세요</small><button class="textbtn" id="mlist">목록 전체 보기 ›</button>'; return; }
+  var tel = String(f.tel || '').replace(/[^0-9]/g, '');
+  c.innerHTML = mobItemHTML(f, MOB.focus) + '<span class="wbtns"><button class="btn solid" data-id="' + esc(f.id) + '">자세히</button>' +
+    (tel ? '<a class="btn" href="tel:' + tel + '">전화</a>' : '') + '<button class="btn" id="mlist">목록</button></span>';
+  focusPin(MOB.focus, true);
+}
+function wheelAngle(e, g, rect) { return Math.atan2(rect.bottom - e.clientY, rect.right - e.clientX) * 180 / Math.PI; }   // 0 = 왼쪽, 90 = 위
+(function () {
+  var el = null;
+  document.addEventListener('pointerdown', function (e) {
+    el = e.target.closest && e.target.closest('#mwheel'); if (!el || !MOB.list.length) { el = null; return; }
+    var r = el.getBoundingClientRect(); MOB.drag = { a: wheelAngle(e, null, r), off: MOB.off, moved: false, r: r, t: e.target };
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!el || !MOB.drag) return;
+    var a = wheelAngle(e, null, MOB.drag.r), d = a - MOB.drag.a;
+    if (Math.abs(d) > 2) MOB.drag.moved = true;
+    if (!MOB.drag.moved) return;
+    e.preventDefault();
+    MOB.off = Math.max(0, Math.min(MOB.list.length - 1, MOB.drag.off + d / WH.step));
+    placeWheel(false);
+  }, { passive: false });
+  document.addEventListener('pointerup', function () {
+    if (!el || !MOB.drag) return;
+    var d = MOB.drag; el = null; MOB.drag = null;
+    if (!d.moved) {                                            // 그냥 누른 경우: 누른 기관을 가운데로
+      var b = d.t.closest && d.t.closest('.witem'); if (!b) return;
+      var i = +b.dataset.wi; if (i === MOB.focus) return select(MOB.list[i].id);
+      MOB.off = i;
+    }
+    MOB.off = Math.round(MOB.off); MOB.focus = MOB.off; placeWheel(true); wheelFocusCard();
+  });
+  document.addEventListener('wheel', function (e) {
+    if (!(e.target.closest && e.target.closest('#mwheel')) || !MOB.list.length) return;
+    e.preventDefault();
+    MOB.off = Math.max(0, Math.min(MOB.list.length - 1, Math.round(MOB.off) + (e.deltaY > 0 ? 1 : -1)));
+    MOB.focus = MOB.off; placeWheel(true); wheelFocusCard();
+  }, { passive: false });
+})();
+/* 고른 기관의 핀을 키우고 지도를 그쪽으로 */
+function focusPin(i, pan) {
+  var f = MOB.list[i];
+  Object.keys(K.pinEl || {}).forEach(function (id) { K.pinEl[id].classList.toggle('focus', !!f && id === f.id); });
+  if (f && pan && K.map) K.map.panTo(new window.kakao.maps.LatLng(f.lat, f.lng));
+}
+function mobFocusId(id) {   // 지도 핀을 누르면: 카드/원형을 그 기관으로 돌린다
+  var i = MOB.list.map(function (f) { return f.id; }).indexOf(id); if (i < 0) return false;
+  MOB.focus = i; MOB.off = i;
+  if (MOB.mode === 'card') { var c = $('mstrip').querySelector('[data-mi="' + i + '"]'); if (c) c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); focusPin(i, true); }
+  else { placeWheel(true); wheelFocusCard(); }
+  return true;
+}
+
 /* ───────── 지도 화면 패널 ───────── */
 function select(id) {
+  if (state.sel !== id) navPush({ sel: id, sheet: (history.state || {}).sheet });
   state.sel = id;
+  if (isMobile()) setSheet(true);
   renderPanel();
   var f = byId(id);
   if (K.map && f) { K.map.panTo(new window.kakao.maps.LatLng(f.lat, f.lng)); drawMap(false); }
@@ -210,6 +336,7 @@ function renderPanel() {
   if (!state.data) { p.innerHTML = '<p class="empty">기관 정보를 불러오는 중이에요…</p>'; return; }
   var n = now(), f = state.sel && byId(state.sel);
   if (f) { p.innerHTML = detailHTML(f, n); p.scrollTop = 0; var b = $('back'); if (b) b.focus(); return; }
+  renderMob();
 
   var list = visible(), F = state.filters;
   var seg = [['all', '전체'], ['m', '병원·의원'], ['p', '상담·지원']].map(function (c) {
@@ -232,7 +359,7 @@ function renderPanel() {
       ? '이 조건에 맞는 곳을 찾지 못했어요. 운영시간 정보가 없는 곳은 시간 조건에서 빠지고, 무료만은 공공기관만 보여줘요. 조건을 하나 풀어 보세요. 급하면 위의 109로 전화해도 괜찮아요.'
       : '찾는 곳이 없어요. 이름을 다르게 적어 보거나 다른 지역을 골라 보세요.';
   }
-  p.innerHTML =
+  p.innerHTML = (isMobile() ? '<div class="sheethead"><span class="grab" aria-hidden="true"></span><button class="textbtn" id="sheetclose">지도로 돌아가기</button></div>' : '') +
     '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요' + (!state.mine && state.sido == null && state.origin.label !== '지도 가운데' && !IN_KAKAO ? '<small> · 내 위치를 쓰거나 지역을 고르면 바뀌어요</small>' : '') + '</p>' +
     '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
     (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
@@ -276,7 +403,8 @@ function detailHTML(f, n) {
   var naver = 'https://map.naver.com/p/search/' + encodeURIComponent(f.n);
   var web = f.web ? (/^https?:\/\//.test(f.web) ? f.web : 'http://' + f.web) : '';
   var yr = +String(f.d || '').slice(0, 4), old = yr && yr < new Date().getFullYear() - 1 ? yr : 0;
-  return '<div class="detail"><button class="textbtn back" id="back">‹ 목록으로</button>' +
+  var fromList = (history.state || {}).sheet;
+  return '<div class="detail"><button class="textbtn back" id="back">' + (isMobile() && !fromList ? '‹ 지도로' : '‹ 목록으로') + '</button>' +
     '<div><p class="kind">' + esc(kindLabel(f)) + ', ' + fmtDist(f._d) + '</p><h2>' + esc(f.n) + '</h2></div>' +
     (STAY[f.t] ? '<p class="note">' + STAY[f.t] + ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.</p>'
       : f.g ? '<p class="note">' + GROUP_NOTE[f.g] + (f.g === 'care' ? ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.' : '') + '</p>' : '') +
@@ -1017,8 +1145,26 @@ function go(v) {
     if (!state.stats) getJSON(CFG.STATS_URL).then(function (j) { state.stats = j; if (state.view === 'facts') renderFacts(); }).catch(function () { $('factsbox').innerHTML = '<p class="empty">통계를 불러오지 못했어요.</p>'; });
     renderFacts();
   }
-  try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
+  if (!NAV.pop) { try { var hs = history.state || {}; if (hs.v !== v || hs.sel || hs.sheet || hs.q || hs.r) history.pushState({ v: v }, '', '#' + v); } catch (e) {} }
+  if (v !== 'map') setSheet(false);
 }
+/* 뒤로가기: 화면을 옮기거나 상세·시트·검진·쉬기 안으로 들어갈 때마다 기록을 남기고, 뒤로 가면 한 단계씩 돌아온다 */
+var NAV = { pop: false };
+function navPush(extra) { try { var o = { v: state.view }; for (var k in extra) if (extra[k]) o[k] = extra[k]; history.pushState(o, '', '#' + state.view); } catch (e) {} }
+window.addEventListener('popstate', function (e) {
+  var h = location.hash.slice(1), s = e.state || { v: VIEWS.indexOf(h) >= 0 ? h : 'home' };
+  NAV.pop = true;
+  try {
+    if (s.v !== state.view) go(s.v);
+    if (state.view === 'map') {
+      var ns = s.sel || null;
+      if (state.sel !== ns) { state.sel = ns; state.report = null; renderPanel(); drawMap(false); }
+      setSheet(isMobile() && !!(s.sheet || s.sel));
+    }
+    if (state.view === 'check' && !s.q && state.quiz) { state.quiz = null; renderCheck(); }
+    if (state.view === 'rest' && !s.r && state.rest) { stopRest(); stopSound(); state.rest = null; renderRest(); }
+  } finally { NAV.pop = false; }
+});
 function showFreeOnMap() { state.sel = null; state.kind = 'p'; state.filters = { open: false, night: false, sat: false, free: true, more: false }; go('map'); drawMap(true); }
 
 document.addEventListener('click', function (e) {
@@ -1030,7 +1176,12 @@ document.addEventListener('click', function (e) {
   if (b.id === 'copy' || b.id === 'copysum') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; }); return; }
   if (b.id === 'breathbtn') return breathe();
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
-  if (b.id === 'back') { state.sel = null; state.report = null; renderPanel(); return drawMap(false); }
+  if (b.id === 'back') { if ((history.state || {}).sel) return history.back(); state.sel = null; state.report = null; if (isMobile()) setSheet(false); renderPanel(); return drawMap(false); }
+  if (b.id === 'sheetclose') return closeSheet();
+  if (b.id === 'msearch' || b.id === 'mlist') return openSheet();
+  if (b.id === 'mloc') return useMyLocation();
+  if (b.dataset.mm) { MOB.mode = b.dataset.mm; try { localStorage.setItem('ms_mapmode', MOB.mode); } catch (er) {} hit('mapmode:' + MOB.mode); return renderMob(); }
+  if (b.dataset.mi != null) { var mi = +b.dataset.mi; if (mi === MOB.focus) return select(MOB.list[mi].id); return mobFocusId(MOB.list[mi].id); }
   // 이 기관 정보가 달라요
   if (b.id === 'reportopen') { state.report = { id: state.sel }; return redrawReport(); }
   if (b.id === 'reportcancel') { state.report = null; return renderPanel(); }
@@ -1061,10 +1212,10 @@ document.addEventListener('click', function (e) {
     var big = $('v-map').classList.toggle('big'); b.setAttribute('aria-pressed', big); b.textContent = big ? '목록 크게' : '지도 크게';
     setTimeout(function () { relayout(); drawMap(false); }, 260); return;
   }
-  if (b.dataset.test) { state.quiz = { test: b.dataset.test, ans: [] }; return renderCheck(); }
+  if (b.dataset.test) { navPush({ q: 1 }); state.quiz = { test: b.dataset.test, ans: [] }; return renderCheck(); }
   if (b.dataset.ans) { state.quiz.ans.push(+b.dataset.ans); renderCheck(); $('v-check').scrollTop = 0; return; }
   if (b.id === 'prevq') { state.quiz.ans.pop(); return renderCheck(); }
-  if (b.id === 'quit') { state.quiz = null; return renderCheck(); }
+  if (b.id === 'quit') { if ((history.state || {}).q) return history.back(); state.quiz = null; return renderCheck(); }
   if (b.id === 'again') { state.quiz = null; return renderCheck(); }
   if (b.id === 'tomap') { state.sel = null; go('map'); return drawMap(true); }
   if (b.id === 'tofree' || b.id === 'factsfree') return showFreeOnMap();
@@ -1081,8 +1232,8 @@ document.addEventListener('click', function (e) {
   if (b.dataset.snd) { startSound(b.dataset.snd); document.querySelectorAll('[data-snd]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.snd === SND.kind); }); return; }
   // 마음 쉬기
   var rz = state.rest, restDraw = function () { renderRest(); var r = $('restbox'); var f = r && r.querySelector('h2'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); } $('v-rest').scrollTop = 0; };
-  if (b.dataset.rest) { if (state.view !== 'rest') go('rest'); state.rest = { k: b.dataset.rest }; return restDraw(); }
-  if (b.id === 'restmenu') { state.rest = null; return restDraw(); }
+  if (b.dataset.rest) { if (state.view !== 'rest') go('rest'); if (!(history.state || {}).r) navPush({ r: 1 }); state.rest = { k: b.dataset.rest }; return restDraw(); }
+  if (b.id === 'restmenu') { if ((history.state || {}).r) return history.back(); state.rest = null; return restDraw(); }
   if (!rz) return;
   if (b.dataset.len) { rz.len = +b.dataset.len; return restDraw(); }
   if (b.id === 'restgo') { if (rz.k === 'ground') rz.i = 0; else rz.go = true; return restDraw(); }
@@ -1111,13 +1262,14 @@ document.addEventListener('input', function (e) {
     var q = $('q'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (er) {} }
   }, 250);
 });
-window.addEventListener('hashchange', function () { var v = location.hash.slice(1); if (VIEWS.indexOf(v) >= 0 && v !== state.view) go(v); });
-var rT; window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { relayout(); if (state.view === 'facts' && state.stats) { lineChart(); barChart(); } }, 200); });
+window.addEventListener('hashchange', function () { var v = location.hash.slice(1); if (!NAV.pop && VIEWS.indexOf(v) >= 0 && v !== state.view) go(v); });
+var rT; window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { relayout(); if (state.view === 'map' && !state.sel) renderMob(); if (state.view === 'facts' && state.stats) { lineChart(); barChart(); } }, 200); });
 setInterval(function () { if (state.view === 'map' && !state.sel) renderPanelKeepFocus(); }, 60000); // 1분마다 진료 상태 갱신
 function renderPanelKeepFocus() { if (document.activeElement && document.activeElement.id === 'q') return; renderPanel(); drawMap(false); }
 
 (function start() {
   var v = location.hash.slice(1);
+  try { history.replaceState({ v: 'home' }, '', '#home'); } catch (e) {}   // 바로 들어온 화면에서 뒤로 가면 처음 화면으로
   go(VIEWS.indexOf(v) >= 0 ? v : 'home');
   hitVisit();
   loadKakao();
