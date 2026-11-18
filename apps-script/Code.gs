@@ -37,6 +37,7 @@ var CFG = {
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   if (typeof addReviewMenu_ === 'function') addReviewMenu_(ui);   // Review.gs의 검수 도우미 메뉴
+  if (typeof addSupportMenu_ === 'function') addSupportMenu_(ui); // Support.gs의 지원사업 메뉴
   ui.createMenu('마음쉼표')
     .addItem('① 티맵 키 저장', 'setTmapKey')
     .addItem('② 좌표 비어 있는 행 채우기 (티맵)', 'fillCoords')
@@ -150,14 +151,15 @@ function checkCoords() {
 /* ───────── 3. 웹으로 내보내기 (웹 앱으로 배포 후 사이트가 호출) ─────────
  *   .../exec?type=facilities  → 노출=TRUE 기관 (짧은 키 JSON + 진료시간)
  *   .../exec?type=stats       → 화면사용=TRUE 통계 + 카피 문구
+ *   .../exec?type=support     → 지원사업 탭에서 노출=TRUE인 심리지원 사업 (Support.gs)
  * 응답이 커서 90KB씩 나눠 1시간 캐시한다. 좌표 갱신(fillCoords) 때 캐시를 비운다.
  */
 function doGet(e) {
   if (e && e.parameter.type === 'hit') return hit_(e.parameter);
-  var type = (e && e.parameter.type) === 'stats' ? 'stats' : 'facilities';
+  var t = e && e.parameter.type, type = t === 'stats' || t === 'support' ? t : 'facilities';
   var body = cacheGet_(type);
   if (!body) {
-    body = JSON.stringify(type === 'stats' ? stats_() : facilities_());
+    body = JSON.stringify(type === 'stats' ? stats_() : type === 'support' ? support_() : facilities_());
     cachePut_(type, body);
   }
   return ContentService.createTextOutput(body).setMimeType(ContentService.MimeType.JSON);
@@ -239,7 +241,7 @@ function cacheGet_(key) {
   for (var j = 0; j < n; j++) { if (got[keys[j]] == null) return null; parts.push(got[keys[j]]); }
   return parts.join('');
 }
-function clearWebCache() { CacheService.getScriptCache().removeAll(['facilities_n', 'stats_n']); }
+function clearWebCache() { CacheService.getScriptCache().removeAll(['facilities_n', 'stats_n', 'support_n']); }
 
 /* ───────── 의견 받기 ─────────
  * 사이트의 '이 기관 정보가 달라요'와 '알려 주세요'가 POST로 보낸다. '의견_접수' 탭에 한 줄씩 쌓는다.
