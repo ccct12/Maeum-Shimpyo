@@ -490,6 +490,8 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   .mcard b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mcard small{grid-column:2;font-size:13px;color:#56645D}
   .mcard .st{grid-column:2;justify-self:start}
+  /* 지도 카드는 어두운 화면에서도 밝은 카드라, 상태 배지 색도 밝은 화면 값으로 고정 */
+  .mcard{--ok:#196847;--ok-soft:#D8EDE1;--warn:#85560C;--warn-soft:#F5E7CB;--off:#55625C;--off-soft:#E3E8E4}
   .mcard.more,.mcard.none{flex-basis:60vw;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;font-weight:600}
   .mcard.more small,.mcard.none small{font-weight:400}
   .pin.focus .pn{width:38px;height:38px;font-size:15px;box-shadow:0 0 0 1.5px #14201B,0 0 0 6px rgba(229,154,90,.55)}
