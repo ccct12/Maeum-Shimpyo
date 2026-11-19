@@ -241,7 +241,7 @@ main{min-height:0;position:relative}
 .fsec h2{font-size:26px;line-height:1.4}
 .fig{background:var(--surface);border-radius:16px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:10px;position:relative}
 .fig h3{font-family:var(--f-body);font-size:16px;font-weight:600}
-.fig .sub{font-size:13px;color:var(--muted)}
+.fig .sub,.fsec .tnote{font-size:13px;color:var(--muted)}
 .lgd{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--muted)}
 .lgd span{display:inline-flex;align-items:center;gap:6px}
 .lgd i{width:14px;height:3px;border-radius:2px;display:inline-block}

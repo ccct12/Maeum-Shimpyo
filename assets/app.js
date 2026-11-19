@@ -678,12 +678,14 @@ function renderFacts() {
     '<div class="fsec"><h2>우울과 불안은 생각보다 가까이 있어요</h2>' +
       '<p class="lead">누구에게나 찾아올 수 있을 만큼 흔하지만, 저절로 지나가길 기다리기보다 전문가와 함께 살펴보면 좋은 일이에요. 숫자로 먼저 살펴볼게요.</p></div>' +
 
-    '<div class="fsec"><h2>우울·불안으로 병원을 찾는 사람이 11년 새 크게 늘었어요</h2>' +
+    '<div class="fsec"><h2>우울·불안으로 병원을 찾는 사람이 꾸준히 늘고 있어요</h2>' +
       '<div class="fig" id="fig-trend"><h3>우울·불안 관련 진료 인원 (' + T.years[0] + '–' + T.years[last] + ')</h3>' +
         '<div class="lgd"><span><i style="background:var(--s1)"></i>기분장애(우울·조울) +' + up(T.mood) + '%</span><span><i style="background:var(--s2)"></i>불안·스트레스 관련 장애 +' + up(T.anx) + '%</span></div>' +
         '<svg class="chart" id="c-trend" role="img" aria-label="연도별 진료 인원 선 그래프"></svg><div class="tip" id="tip-trend"></div>' +
         '<p class="sub">' + esc(T.note) + '</p><p class="src">출처: ' + esc(T.src) + '</p>' +
         tableHTML(['연도', '기분장애', '불안·스트레스'], T.years.map(function (y, i) { return [y, T.mood[i].toLocaleString() + '명', T.anx[i].toLocaleString() + '명']; })) + '</div>' +
+      // 최근 흐름: 집계 기준이 달라 그래프에 잇지 않고 따로 보여 준다
+      (T.recent ? '<div class="tiles">' + tile(T.recent) + '</div><p class="tnote">' + esc(T.recent.note) + '</p>' : '') +
       '<div class="callout"><p>"마음의 감기"라는 말은 그만큼 흔하다는 뜻이에요. 며칠 쉬면 저절로 낫는다는 뜻은 아니에요. 일찍 상담하고 필요한 치료를 받는 게 도움이 돼요.</p></div></div>' +
 
     '<div class="fsec"><h2>성인 5명 중 1명은 일상에서 스트레스를 많이 느껴요</h2>' +
