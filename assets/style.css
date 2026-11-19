@@ -136,6 +136,11 @@ main{min-height:0;position:relative}
 .rd{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .rs{grid-column:1/-1;font-size:14px;color:var(--muted)}
 .row .st{grid-column:1/-1;margin-top:4px}
+.list li{position:relative}
+.list li.hascall .row{padding-right:56px}
+.rcall,.mcall{position:absolute;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green);text-decoration:none}
+.rcall svg,.mcall svg{width:20px;height:20px}
+.rcall{right:2px;bottom:12px}
 .mark{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 4px;margin-right:8px;vertical-align:2px;color:#fff;font:700 11px/1 var(--f-body);font-style:normal;font-variant-numeric:tabular-nums}
 .mark.m{border-radius:11px;background:#14523C} .mark.p{border-radius:6px;background:#B04A12}
 .st{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--off-soft);color:var(--off);justify-self:start;align-self:flex-start}
@@ -207,7 +212,7 @@ main{min-height:0;position:relative}
 .snow b{font-weight:700;font-size:16px}
 .snow span{font-size:13px;color:var(--muted)}
 /* 고정 탭: 화면 위 여백(.page padding)만큼 끌어올려 틈 없이 붙이고, 둘레를 바탕색으로 감싸 뒤 목록이 비치지 않게 */
-.stab{position:sticky;top:-24px;z-index:3;box-shadow:0 0 0 8px var(--paper)}
+.stab{position:sticky;top:-24px;z-index:3;box-shadow:0 0 0 8px var(--paper),0 9px 0 0 var(--line)}
 .stab small{font-size:12px;color:var(--muted);margin-left:2px}
 .sfilter{border:1.5px solid var(--line);border-radius:14px;padding:4px 14px;background:var(--surface)}
 .sfilter summary{cursor:pointer;font-weight:600;padding:10px 0;font-size:15px}
@@ -477,6 +482,10 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   .mstrip::-webkit-scrollbar{display:none}
   .mcard{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;background:#FBFCFA;color:#1E2A25;border:0;border-radius:18px;padding:14px 16px;box-shadow:0 4px 18px rgba(20,30,26,.22)}
   .mcard{flex:0 0 80vw;scroll-snap-align:center}
+  .mitem{position:relative;flex:0 0 80vw;scroll-snap-align:center;display:flex}
+  .mitem .mcard{flex:1 1 auto;min-width:0}
+  .mitem.hascall .mcard{padding-right:66px}
+  .mcall{right:12px;top:50%;transform:translateY(-50%);background:#DCE8E0;color:#2B6650}
   .mcard .mark{grid-row:1/3}
   .mcard b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mcard small{grid-column:2;font-size:13px;color:#56645D}

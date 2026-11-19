@@ -219,6 +219,12 @@ function renderMob() {
   MOB.focus = i >= 0 ? i : 0;
   renderMchips(); renderStrip();
 }
+// 목록에서 바로 거는 작은 전화 버튼 (카드를 누르는 자리와 떨어뜨려 잘못 걸리지 않게)
+var PHONE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.5h2.6l1.4 4.1-2 1.5a12 12 0 0 0 6.3 6.3l1.5-2 4.1 1.4v2.6a2 2 0 0 1-2.1 2A16.5 16.5 0 0 1 4.6 5.6a2 2 0 0 1 2-2.1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+function callBtnHTML(f, cls) {
+  var tel = String(f.tel || '').replace(/[^0-9]/g, ''); if (!tel) return '';
+  return '<a class="' + cls + '" href="tel:' + tel + '" aria-label="' + esc(f.n) + '에 전화 걸기 ' + esc(f.tel) + '">' + PHONE_SVG + '<span hidden>' + esc(f.tel) + '</span></a>';
+}
 function mobItemHTML(f, i) {
   var s = status(f, now());
   return '<i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i><b>' + esc(f.n) + '</b>' +
@@ -259,7 +265,7 @@ function renderMchips() {
 /* 카드: 가로로 넘기는 띠 */
 function renderStrip() {
   var el = $('mstrip'), list = MOB.list;
-  el.innerHTML = list.length ? list.map(function (f, i) { return '<button class="mcard" data-mi="' + i + '" aria-label="' + (i + 1) + '번 ' + esc(f.n) + ', 자세히 보기">' + mobItemHTML(f, i) + '</button>'; }).join('') +
+  el.innerHTML = list.length ? list.map(function (f, i) { var c = callBtnHTML(f, 'mcall'); return '<div class="mitem' + (c ? ' hascall' : '') + '"><button class="mcard" data-mi="' + i + '" aria-label="' + (i + 1) + '번 ' + esc(f.n) + ', 자세히 보기">' + mobItemHTML(f, i) + '</button>' + c + '</div>'; }).join('') +
       '<button class="mcard more" id="mlist">목록 전체 보기<small>조건 고르기 · ' + visible().length.toLocaleString() + '곳</small></button>'
     : '<div class="mcard none"><b>이 조건에 맞는 곳이 없어요</b><small>목록에서 조건을 하나 풀어 보세요</small></div>';
   focusPin(MOB.focus, false);
@@ -270,7 +276,7 @@ document.addEventListener('scroll', function (e) {
   clearTimeout(stripT);
   stripT = setTimeout(function () {
     var el = $('mstrip'), mid = el.scrollLeft + el.clientWidth / 2, best = 0, bd = 1e9;
-    el.querySelectorAll('.mcard[data-mi]').forEach(function (c) { var d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = +c.dataset.mi; } });
+    el.querySelectorAll('.mcard[data-mi]').forEach(function (c) { var w = c.parentElement, d = Math.abs(w.offsetLeft + w.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = +c.dataset.mi; } });
     if (best !== MOB.focus) { MOB.focus = best; focusPin(best, true); }
   }, 90);
 }, true);
@@ -314,10 +320,10 @@ function renderPanel() {
   }).join('');
   var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '"' + (state.sido === i ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
   var cards = list.slice(0, state.shown).map(function (f, i) {
-    var s = status(f, n);
-    return '<li><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
+    var s = status(f, n), c = callBtnHTML(f, 'rcall');
+    return '<li' + (c ? ' class="hascall"' : '') + '><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
       '<span class="rs">' + esc(kindLabel(f)) + ', ' + esc(shortAddr(f.a)) + '</span>' +
-      (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') + '</button></li>';
+      (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') + '</button>' + c + '</li>';
   }).join('');
   var timeOn = F.open || F.night || F.sat || F.free, hint = '';
   var hidden = F.more ? 0 : (state.data || []).filter(function (f) { return f.g; }).length;
@@ -553,7 +559,12 @@ function supText(t) { return esc(String(t || '').trim()).replace(/\n+/g, '<br>')
 function supTel(t) {   // 문의처 문장 안의 전화번호에 바로 걸기 링크를 붙인다
   return supText(t).replace(/(\b0\d{1,2}-\d{3,4}-\d{4}\b|\b1\d{3}-\d{4}\b)/g, function (m) { return '<a href="tel:' + m.replace(/-/g, '') + '">' + m + '</a>'; });
 }
-function supShort(x, n) { var s = String(x.s || '').trim(); return s.length > n ? s.slice(0, n - 2).replace(/\s+\S*$/, '') + '…' : s; }
+// 칸이 좁아 줄이되, 첫 문장이 들어가면 문장 끝에서 자른다 (문장 한가운데서 '…'로 끊기지 않게)
+function supShort(x, n) {
+  var s = String(x.s || '').replace(/\s+/g, ' ').trim(); if (s.length <= n) return s;
+  var m = s.match(/^.{12,}?[다요]\.(?=\s|$)/); if (m && m[0].length <= n + 14) return m[0];
+  return s.slice(0, n - 2).replace(/\s+\S*$/, '') + '…';
+}
 // 목록은 한 줄씩 접어 두고, 누르면 그 자리에서 펼친다 (글이 한꺼번에 쏟아지지 않게)
 function supCard(x, open) {
   var tel = /^[\d-]{3,14}$/.test(String(x.tel || '').trim()) ? String(x.tel).trim() : '';
