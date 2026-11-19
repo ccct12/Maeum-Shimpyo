@@ -375,6 +375,7 @@ function detailHTML(f, n) {
     '<div><p class="kind">' + esc(kindLabel(f)) + ', ' + fmtDist(f._d) + '</p><h2>' + esc(f.n) + '</h2></div>' +
     (STAY[f.t] ? '<p class="note">' + STAY[f.t] + ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.</p>'
       : f.g ? '<p class="note">' + GROUP_NOTE[f.g] + (f.g === 'care' ? ' 처음 상담이 필요하다면 정신건강복지센터나 가까운 의원이 더 잘 맞을 수 있어요.' : '') + '</p>' : '') +
+    (f.cost === '바우처' ? '<p class="note">정부 심리상담 바우처 제공기관이라, 정해진 자격 기준을 갖춘 선생님이 상담해요.</p>' : '') +
     (s.k === 'unknown' ? '' : '<span class="st s-' + s.k + '">' + esc(s.t) + '</span>') +
     '<div class="actions">' + (tel ? '<a class="call" href="tel:' + tel + '">전화하기 ' + esc(f.tel) + '</a>' : '') +
       '<div class="pair"><a href="' + kakao + '" target="_blank" rel="noopener">카카오맵 길찾기</a><a href="' + naver + '" target="_blank" rel="noopener">네이버지도에서 보기</a></div></div>' +
