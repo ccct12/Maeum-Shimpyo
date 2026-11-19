@@ -1,26 +1,26 @@
 /* hidden 속성은 어떤 display 규칙보다 우선 (숨 고르기 원이 미리 보이던 문제) */
 [hidden]{display:none!important}
 /* 마음쉼표
- * 색: 쑥빛 종이 + 솔잎 먹색, 살구색은 쉼표와 위기상담 밑줄에만 쓴다.
+ * 색: 아침 햇살 같은 웜 화이트 + 맑은 숲색, 살구색은 쉼표·포인트에만. 위기 띠는 연살구 바탕에 진한 웜 브라운.
  * 모바일(기본): 한 번에 한 가지만 보이게. PC(900px~): 찾기 화면만 목록·지도 2단.
  */
 :root{
-  --paper:#F1F4EF; --surface:#FBFCFA; --ink:#1E2A25; --muted:#586861; --line:#D3DBD4;
-  --green:#2B6650; --green-soft:#DCE8E0; --on-green:#FBFCFA; --apricot:#E59A5A;
-  --ok:#196847; --ok-soft:#D8EDE1; --warn:#85560C; --warn-soft:#F5E7CB; --off:#55625C; --off-soft:#E3E8E4;
-  --band:#1E2A25; --band-ink:#F1F4EF;
-  --s1:#1F8A63; --s2:#C2702E; --grid:#E1E7E2;
+  --paper:#FFFCF7; --surface:#FFFFFF; --ink:#1F2937; --muted:#4B5563; --line:#ECE7DF;
+  --green:#1B7266; --green-soft:#E3F3EF; --on-green:#FFFFFF; --apricot:#F4A261;
+  --ok:#166B5A; --ok-soft:#E1F3EC; --warn:#85560C; --warn-soft:#FBEFD9; --off:#57534E; --off-soft:#F1EEE9;
+  --band:#FFF3EB; --band-ink:#7C2D12; --band-sub:#9A3412; --band-line:#C2410C;
+  --s1:#1F8A73; --s2:#E07B39; --grid:#F0ECE5;
   --f-display:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --paper:#141B18; --surface:#1C2521; --ink:#E7EEE9; --muted:#9DAEA6; --line:#2F3B36;
-    --green:#8CCBAE; --green-soft:#24362E; --on-green:#11201A; --apricot:#E0A066;
-    --ok:#7FD3B0; --ok-soft:#1D3A30; --warn:#E6BC74; --warn-soft:#3D321B; --off:#9DAEA6; --off-soft:#27312D;
-    --band:#0D1311; --band-ink:#E7EEE9;
-    --s1:#2FA57A; --s2:#C97A3A; --grid:#2A3531;
+    --paper:#1A1816; --surface:#24211E; --ink:#EEE9E3; --muted:#B8B0A7; --line:#37322D;
+    --green:#7FD1BF; --green-soft:#1F3531; --on-green:#10201C; --apricot:#F0A56A;
+    --ok:#7FD1BF; --ok-soft:#1D3530; --warn:#E6BC74; --warn-soft:#3D321B; --off:#B8B0A7; --off-soft:#302C28;
+    --band:#3A2418; --band-ink:#FFE3D1; --band-sub:#F2C4A8; --band-line:#F0A56A;
+    --s1:#3FB59A; --s2:#E08A4A; --grid:#2F2B27;
     color-scheme:dark;
   }
 }
@@ -46,8 +46,8 @@ p{margin:0}
 .nav button{border:0;background:none;padding:8px 14px;border-radius:999px;color:var(--muted)}
 .nav button[aria-current="page"]{background:var(--green-soft);color:var(--ink);font-weight:600}
 .crisis{background:var(--band);color:var(--band-ink);padding:9px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:2px 16px;font-size:14px}
-.crisis span{opacity:.8}
-.crisis a{color:inherit;font-weight:600;text-decoration:none;border-bottom:2px solid var(--apricot);font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 0}
+.crisis span{color:var(--band-sub)}
+.crisis a{color:inherit;font-weight:600;text-decoration:none;border-bottom:2px solid var(--band-line);font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 0}
 main{min-height:0;position:relative}
 .view{height:100%;display:none}
 .view.on{display:flex}
@@ -99,7 +99,7 @@ main{min-height:0;position:relative}
 #kmap{background:#F2F1EC}  /* 카카오 지도 바탕색에 맞춰, 타일이 늦게 와도 회색 상자처럼 보이지 않게 */
 .kmap{position:absolute;inset:0}
 .research{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;border:0;border-radius:999px;background:var(--ink);color:var(--paper);padding:8px 16px;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(20,30,26,.3)}
-.legend{position:absolute;left:10px;bottom:10px;z-index:3;display:flex;gap:12px;font-size:12px;color:#26332D;background:#FBFCFA;padding:6px 12px;border-radius:999px;box-shadow:0 1px 4px rgba(20,30,26,.3)}
+.legend{position:absolute;left:10px;bottom:10px;z-index:3;display:flex;gap:12px;font-size:12px;color:#1F2937;background:#FFFFFF;padding:6px 12px;border-radius:999px;box-shadow:0 1px 4px rgba(20,30,26,.3)}
 .legend b{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff;box-shadow:0 0 0 1px #14201B}
 .legend .c{border-radius:50%;background:#14523C} .legend .p{border-radius:3px;background:#B04A12}
 /* 지도 핀: 알록달록한 지도 위에서도 보이게 크게, 흰 테두리 + 진한 바깥선 + 목록 번호 */
@@ -324,13 +324,13 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 
 /* 아침 햇살: 처음 화면과 마음 쉬기에만. 찾기·자가검진·통계는 깔끔한 바탕 그대로 */
 #v-home,#v-rest{background:
-  radial-gradient(110% 55% at 92% -8%, rgba(255,206,150,.38), rgba(255,206,150,0) 62%),
-  radial-gradient(80% 45% at -5% 0%, rgba(214,230,218,.7), rgba(214,230,218,0) 70%),
+  radial-gradient(110% 55% at 92% -8%, rgba(255,214,166,.42), rgba(255,214,166,0) 62%),
+  radial-gradient(80% 45% at -5% 0%, rgba(214,240,232,.55), rgba(214,240,232,0) 70%),
   var(--paper)}
 @media (prefers-color-scheme:dark){
   #v-home,#v-rest{background:
-    radial-gradient(110% 55% at 92% -8%, rgba(150,180,210,.10), rgba(150,180,210,0) 62%),
-    radial-gradient(80% 45% at -5% 0%, rgba(80,120,100,.14), rgba(80,120,100,0) 70%),
+    radial-gradient(110% 55% at 92% -8%, rgba(240,165,106,.10), rgba(240,165,106,0) 62%),
+    radial-gradient(80% 45% at -5% 0%, rgba(127,209,191,.07), rgba(127,209,191,0) 70%),
     var(--paper)}
 }
 
@@ -365,7 +365,7 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .say .textbtn{text-align:left}
 
 /* 지도 크게 보기 (모바일) */
-.mapsize{position:absolute;right:10px;top:10px;z-index:3;border:0;border-radius:999px;background:#FBFCFA;color:#1E2A25;padding:7px 13px;font-size:13px;font-weight:600;box-shadow:0 1px 4px rgba(20,30,26,.3)}
+.mapsize{position:absolute;right:10px;top:10px;z-index:3;border:0;border-radius:999px;background:#FFFFFF;color:#1F2937;padding:7px 13px;font-size:13px;font-weight:600;box-shadow:0 1px 4px rgba(20,30,26,.3)}
 .locmsg .textbtn{font-size:14px;padding:0}
 @media (max-width:899px){
   .mapwrap{flex:0 0 44%;transition:flex-basis .25s ease}
@@ -395,13 +395,14 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   .actions a.call:hover,.primary:hover,.btn.solid:hover{filter:brightness(1.08);box-shadow:0 2px 10px rgba(20,30,26,.18)}
   .ghost:not(:disabled):hover,.btn:not(.solid):hover{border-color:var(--green);background:color-mix(in srgb,var(--green) 14%,var(--surface))}
   .sound button:not([aria-pressed="true"]):hover,.chip:not([aria-pressed="true"]):hover{border-color:var(--green);color:var(--ink);background:color-mix(in srgb,var(--green) 14%,var(--surface))}
-  .seg button:not([aria-pressed="true"]):hover{color:var(--ink);background:rgba(127,140,133,.12)}
+  .seg button:not([aria-pressed="true"]):hover{color:var(--ink);background:rgba(120,100,80,.08)}
   .tabs button:not([aria-current="page"]):hover{color:var(--ink)}
   .textbtn:hover{text-decoration-color:var(--apricot)}
-  .crisis a:hover,.help a:hover{border-bottom-width:3px;color:#fff}
+  .crisis a:hover{border-bottom-width:3px}
+  .help a:hover{border-bottom-width:3px;color:#fff}
   .research:hover{filter:brightness(1.25)}
-  .mapsize:hover{background:#E8EFEA}
-  .sprout:hover{background:rgba(127,140,133,.10)}
+  .mapsize:hover{background:#F3EFE8}
+  .sprout:hover{background:rgba(120,100,80,.07)}
   .where select:hover,.search:hover{border-color:var(--green)}
 }
 
@@ -468,11 +469,11 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   .legend,.mapsize{display:none}
   .research{top:112px}
   .mtop{position:absolute;left:12px;right:12px;top:10px;z-index:6;display:flex;gap:8px}
-  .msearch{flex:1;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:#FBFCFA;color:#56645D;padding:12px 16px;font-size:15px;text-align:left;box-shadow:0 2px 10px rgba(20,30,26,.22)}
-  .msearch svg,.mloc svg{width:20px;height:20px;fill:none;stroke:#1E2A25;stroke-width:2;stroke-linecap:round;flex:none}
-  .mloc{flex:none;width:46px;height:46px;border:0;border-radius:50%;background:#FBFCFA;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(20,30,26,.22)}
+  .msearch{flex:1;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;background:#FFFFFF;color:#4B5563;padding:12px 16px;font-size:15px;text-align:left;box-shadow:0 2px 10px rgba(20,30,26,.22)}
+  .msearch svg,.mloc svg{width:20px;height:20px;fill:none;stroke:#1F2937;stroke-width:2;stroke-linecap:round;flex:none}
+  .mloc{flex:none;width:46px;height:46px;border:0;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(20,30,26,.22)}
   .mchips{position:absolute;left:12px;right:12px;top:64px;z-index:6;display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-  .mchip{height:34px;padding:0;border:0;border-radius:10px;background:#FBFCFA;color:#26332D;font-size:13px;font-weight:500;letter-spacing:-.02em;white-space:nowrap;box-shadow:0 1px 5px rgba(20,30,26,.2);transition:background-color .15s,color .15s}
+  .mchip{height:34px;padding:0;border:0;border-radius:10px;background:#FFFFFF;color:#1F2937;font-size:13px;font-weight:500;letter-spacing:-.02em;white-space:nowrap;box-shadow:0 1px 5px rgba(20,30,26,.2);transition:background-color .15s,color .15s}
   .mchip[aria-pressed="true"]{background:#14201B;color:#fff;font-weight:700}
   .mchip.km[aria-pressed="true"]{background:#14523C}   /* 지도 핀 색과 같게: 병의원 초록 */
   .mchip.kp[aria-pressed="true"]{background:#B04A12}   /* 상담소 주황 */
@@ -480,18 +481,18 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
   /* 카드 */
   .mstrip{position:absolute;left:0;right:0;bottom:12px;z-index:5;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 10vw;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .mstrip::-webkit-scrollbar{display:none}
-  .mcard{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;background:#FBFCFA;color:#1E2A25;border:0;border-radius:18px;padding:14px 16px;box-shadow:0 4px 18px rgba(20,30,26,.22)}
+  .mcard{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;background:#FFFFFF;color:#1F2937;border:0;border-radius:18px;padding:14px 16px;box-shadow:0 4px 18px rgba(20,30,26,.22)}
   .mcard{flex:0 0 80vw;scroll-snap-align:center}
   .mitem{position:relative;flex:0 0 80vw;scroll-snap-align:center;display:flex}
   .mitem .mcard{flex:1 1 auto;min-width:0}
   .mitem.hascall .mcard{padding-right:66px}
-  .mcall{right:12px;top:50%;transform:translateY(-50%);background:#DCE8E0;color:#2B6650}
+  .mcall{right:12px;top:50%;transform:translateY(-50%);background:#E3F3EF;color:#1B7266}
   .mcard .mark{grid-row:1/3}
   .mcard b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mcard small{grid-column:2;font-size:13px;color:#56645D}
+  .mcard small{grid-column:2;font-size:13px;color:#4B5563}
   .mcard .st{grid-column:2;justify-self:start}
   /* 지도 카드는 어두운 화면에서도 밝은 카드라, 상태 배지 색도 밝은 화면 값으로 고정 */
-  .mcard{--ok:#196847;--ok-soft:#D8EDE1;--warn:#85560C;--warn-soft:#F5E7CB;--off:#55625C;--off-soft:#E3E8E4}
+  .mcard{--ok:#166B5A;--ok-soft:#E1F3EC;--warn:#85560C;--warn-soft:#FBEFD9;--off:#57534E;--off-soft:#F1EEE9}
   .mcard.more,.mcard.none{flex-basis:60vw;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;font-weight:600}
   .mcard.more small,.mcard.none small{font-weight:400}
   .pin.focus .pn{width:38px;height:38px;font-size:15px;box-shadow:0 0 0 1.5px #14201B,0 0 0 6px rgba(229,154,90,.55)}
