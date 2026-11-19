@@ -721,13 +721,13 @@ function lineChart() {
   var narrow = fig.clientWidth < 520;
   var W = narrow ? 360 : 680, H = narrow ? 230 : 260, L = 40, R = narrow ? 64 : 92, Tp = 14, B = 26;
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = '';
-  var n = T.years.length, ymax = 1400000, step = 400000;
+  var n = T.years.length, step = 400000, ymax = Math.ceil(Math.max.apply(null, T.mood.concat(T.anx)) / step) * step;
   var x = function (i) { return L + (W - L - R) * i / (n - 1); }, y = function (v) { return Tp + (H - Tp - B) * (1 - v / ymax); };
   for (var v = 0; v <= ymax; v += step) {
     svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--grid)', 'stroke-width': 1 }, svg);
     svgEl('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end' }, svg).textContent = v ? man(v) : '0';
   }
-  T.years.forEach(function (yr, i) { if (i % 3 === 0 || i === n - 1) svgEl('text', { x: x(i), y: H - 6, 'text-anchor': 'middle' }, svg).textContent = yr; });
+  T.years.forEach(function (yr, i) { if ((n - 1 - i) % 3 === 0) svgEl('text', { x: x(i), y: H - 6, 'text-anchor': 'middle' }, svg).textContent = yr; });
   var series = [['mood', 'var(--s1)', '기분장애'], ['anx', 'var(--s2)', '불안·스트레스']];
   series.forEach(function (s) {
     var d = T[s[0]].map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join('');
