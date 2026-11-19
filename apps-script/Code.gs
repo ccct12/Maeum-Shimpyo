@@ -289,18 +289,22 @@ function safe_(v) { return /^[=+\-@]/.test(v) ? "'" + v : v; }
 var HIT_COL = {
   visit: '방문', open: '접속', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
   'view:rest': '마음 쉬기', 'view:ask': '알려 주세요', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면',
-  tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화'
+  'view:support': '지원 제도', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화',
+  'tri:calm': '3갈래_버거워요', 'tri:find': '3갈래_찾기'
 };
 var HIT_DV = { pc: 'PC', m: '모바일' };
 var HIT_SRC = { direct: '유입_직접', kakao: '유입_카카오톡', search: '유입_검색', sns: '유입_SNS', etc: '유입_기타' };
 
 function hit_(p) {
   p = p || {};
-  var ev = p.e, name = HIT_COL[ev], add = {};
+  var ev = String(p.e || ''), add = {}, pre = '';
+  // 시제품 첫 화면(v2)은 'v2:<이벤트>'로 온다. 같은 이름 앞에 'v2 '를 붙인 열에 따로 센다(본 사이트 숫자와 섞지 않음)
+  var vm = ev.match(/^(v2):(.+)$/); if (vm) { pre = vm[1] + ' '; ev = vm[2]; }
+  var name = HIT_COL[ev];
   if (!name) return ContentService.createTextOutput('ok');
-  add[name] = 1;
-  if (ev.indexOf('view:') === 0) add['화면 보기'] = 1;
-  if (ev === 'visit') {
+  add[pre + name] = 1;
+  if (ev.indexOf('view:') === 0) add[pre + '화면 보기'] = 1;
+  if (!pre && ev === 'visit') {
     if (p.nw === '1') add['신규'] = 1; else if (p.nw === '0') add['재방문'] = 1;
     if (HIT_DV[p.dv]) add[HIT_DV[p.dv]] = 1;
     if (HIT_SRC[p.src]) add[HIT_SRC[p.src]] = 1;
@@ -310,7 +314,7 @@ function hit_(p) {
     try {
       var now = new Date(), today = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');
       bumpRow_('방문_기록', today, add);
-      if (ev === 'open') { var h = {}; h[Utilities.formatDate(now, 'Asia/Seoul', 'H') + '시'] = 1; bumpRow_('방문_시간대', today, h); }
+      if (!pre && ev === 'open') { var h = {}; h[Utilities.formatDate(now, 'Asia/Seoul', 'H') + '시'] = 1; bumpRow_('방문_시간대', today, h); }
     } finally { lock.releaseLock(); }
   }
   return ContentService.createTextOutput('ok');

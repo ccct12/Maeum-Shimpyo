@@ -1,0 +1,25 @@
+/* 시제품 v2: 첫 화면만 '지금 상태' 3갈래. 나머지 화면은 본 사이트와 같다. */
+.tri-pick{display:flex;flex-direction:column;gap:28px}
+.tri-pick .tri-more{margin:-10px 0 0}
+.tri b{font-size:21px}
+.tri-more{display:flex;flex-wrap:wrap;gap:4px 18px}
+.tri-more .textbtn{font-size:15px;padding:6px 0}
+.tri-panel{display:flex;flex-direction:column;gap:16px;padding-top:4px}
+.tri-panel h2{font-size:clamp(26px,7vw,34px);line-height:1.35;padding-right:60px;outline:none}
+.tri-panel h3{font-size:17px;margin-top:6px}
+.tri-back{align-self:flex-start;font-size:15px;padding:6px 0}
+.tri-panel .breath{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.bigcalls{display:grid;gap:10px}
+.bigcall{display:flex;flex-direction:column;justify-content:center;min-height:64px;padding:12px 18px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);color:var(--ink);text-decoration:none}
+.bigcall b{font-size:24px;font-variant-numeric:tabular-nums;border-bottom:0}
+.bigcall span{font-size:14px;color:var(--muted)}
+.bigcall:active{background:var(--green-soft)}
+.calm-words{margin:4px 0 0;padding:14px 18px;list-style:none;border-left:3px solid var(--apricot);background:var(--surface);border-radius:0 12px 12px 0;display:flex;flex-direction:column;gap:6px;font-family:var(--f-display);font-size:17px}
+.tri-kind{display:grid;grid-template-columns:repeat(3,1fr)}
+.tri-kind button{min-height:48px;line-height:1.2}
+.tri-kind small{display:block;font-size:12.5px;color:var(--muted)}
+.tri-cond{display:flex;flex-wrap:wrap;gap:8px}
+.tri-cond .chip{min-height:40px;font-size:15px;padding:8px 14px}
+.tri-cond .chip[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.tri-go{margin-top:6px}
+@media (min-width:900px){.bigcalls{grid-template-columns:1fr 1fr}}

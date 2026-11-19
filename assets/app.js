@@ -1034,6 +1034,7 @@ document.addEventListener('click', function (e) {
  * 누구인지 알 수 있는 값(IP를 따로 모으거나, 기기 ID, 위치, 검색어, 자가검진 응답)은 보내지 않는다. */
 function hit(ev, extra) {
   if (!CFG.DATA_URL || /^(localhost|127\.)/.test(location.hostname)) return;
+  if (window.MAEUM_VARIANT) ev = window.MAEUM_VARIANT + ':' + ev;   // 시제품(v2)은 'v2:' 를 붙여 본 사이트 숫자와 섞이지 않게
   var q = '?type=hit&e=' + encodeURIComponent(ev);
   if (extra) Object.keys(extra).forEach(function (k) { q += '&' + k + '=' + encodeURIComponent(extra[k]); });
   try { fetch(CFG.DATA_URL + q, { mode: 'no-cors', keepalive: true }); } catch (e) {}
@@ -1272,4 +1273,6 @@ function renderPanelKeepFocus() { if (document.activeElement && document.activeE
   loadData(function () { if (state.view === 'map' && !state.sel) renderPanel(); drawMap(first); first = false; });
   loadSupport();
 })();
+// 시제품 첫 화면(v2/v2.js)이 쓰는 최소한의 손잡이
+window.MAEUM = { state: state, go: go, drawMap: drawMap, navPush: navPush, breathe: breathe, hit: hit, CFG: CFG };
 })();
