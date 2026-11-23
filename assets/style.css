@@ -97,7 +97,7 @@ main{min-height:0;position:relative}
 .mapwrap{position:relative;flex:0 0 34%;min-height:180px;background:var(--off-soft);overflow:hidden}
 #v-map.nomap .mapwrap{display:none}
 #kmap{background:#F2F1EC}  /* 카카오 지도 바탕색에 맞춰, 타일이 늦게 와도 회색 상자처럼 보이지 않게 */
-.kmap{position:absolute;inset:0}
+.kmap{position:absolute;inset:0;background:#EDEFE9}   /* 지도 타일이 늦게 올 때 회색 대신 바탕과 비슷한 색 */
 .research{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;border:0;border-radius:999px;background:var(--ink);color:var(--paper);padding:8px 16px;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(20,30,26,.3)}
 .legend{position:absolute;left:10px;bottom:10px;z-index:3;display:flex;gap:12px;font-size:12px;color:#26332D;background:#FBFCFA;padding:6px 12px;border-radius:999px;box-shadow:0 1px 4px rgba(20,30,26,.3)}
 .legend b{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff;box-shadow:0 0 0 1px #14201B}
@@ -543,6 +543,11 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .topshare svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .topshare:hover{border-color:var(--green)}
 @media (min-width:900px){.top .nav{margin-left:auto}.topshare{margin-left:8px}}
+/* 모바일: 눌리는 영역(44px)은 그대로, 보이는 모양은 작게. 테두리 없이 아이콘 + 작은 글씨 */
+@media (max-width:899px){
+  .topshare{border:0;padding:0 4px 0 8px;gap:4px;font-size:13px;font-weight:500;color:var(--muted)}
+  .topshare svg{width:17px;height:17px}
+}
 /* 기관 찾기: 시·도 → 시·군·구 */
 .where{align-items:stretch}
 .areapick{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1 1 220px}

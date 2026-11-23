@@ -347,7 +347,7 @@ function renderPanel() {
     '<input class="search" id="q" type="search" placeholder="기관 이름이나 동네로 찾기 (예: 역삼동)" value="' + esc(state.q) + '" aria-label="기관 이름이나 동네로 찾기">' +
     '<div class="filters" role="group" aria-label="조건">' + chips + '</div>' +
     '<p class="meta">' + (state.loadErr ? '기관 정보를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.' :
-      (F.open || F.night || F.sat ? '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' : '') + list.length.toLocaleString() + '곳' + (state.pending ? ' · 최신 정보 확인 중…' : '')) + '</p>' +
+      (F.open || F.night || F.sat ? (state.sido != null ? areaCount(list) + ' (운영시간 정보가 있는 곳만)' : '운영시간 정보가 있는 ' + (state.data || []).filter(function (f) { return f.h; }).length.toLocaleString() + '곳 중 ' + areaCount(list)) : areaCount(list)) + (state.pending ? ' · 최신 정보 확인 중…' : '')) + '</p>' +
     (hidden ? '<p class="meta">요양·재활 시설 등 ' + hidden.toLocaleString() + '곳은 접어 뒀어요. 위 \'그 밖의 기관도 보기\'로 볼 수 있어요.</p>' : '') +
     (list.length ? '<ul class="list">' + cards + '</ul>' : '<div class="empty withart">' + EMPTY_ART + '<p>' + hint + '</p></div>') +
     (list.length > state.shown ? '<button class="btn more" id="more">' + Math.min(CFG.LIST_STEP || 30, list.length - state.shown) + '곳 더 보기</button>' : '') +
@@ -550,6 +550,21 @@ function supportReady() {
   if (state.view === 'check' && state.quiz) renderCheck();
 }
 // 복지로 시도명 → 사이트 지역 이름 (2026년 전남·광주는 '전남광주통합특별시' 하나로 나온다)
+// 고른 시·도/시·군·구 안의 기관 수를 따로 보여 준다. 목록은 경계 근처 이웃 지역도 보이도록 전국 거리순 그대로.
+var GJ_GU = { '동구': 1, '서구': 1, '남구': 1, '북구': 1, '광산구': 1 };
+function areaOf(f) {
+  if (f._ar) return f._ar;
+  var t = String(f.a || '').trim().split(/\s+/), sd = t[0] === '전남광주통합특별시' ? (GJ_GU[t[1]] ? '광주' : '전남') : (sidoKeys(t[0])[0] || '');
+  var g = sd === '세종' ? '세종시' : /(시|군|구)$/.test(t[1] || '') ? t[1] : '';
+  return (f._ar = [sd, g]);
+}
+function areaCount(list) {
+  var all = list.length.toLocaleString() + '곳';
+  if (state.sido == null) return all;
+  var sd = SIDO[state.sido][0], gu = state.gu && AREAS.list ? AREAS.list.filter(function (a) { return a.p === state.gu; })[0] : null;
+  var n = list.filter(function (f) { var a = areaOf(f); return a[0] === sd && (!gu || a[1] === gu.g); }).length;
+  return '<b>' + esc(gu ? areaLabel(gu) : sd) + ' ' + n.toLocaleString() + '곳</b> · 전국 ' + all + '을 가까운 순서로';
+}
 function sidoKeys(n) {
   n = String(n || '');
   if (/전남광주|전라남도.*광주/.test(n)) return ['전남', '광주'];
