@@ -31,7 +31,7 @@ jobs:
         run: python scripts/build_area_pages.py
       - name: 바뀌었으면 커밋
         run: |
-          git add -A area sitemap.xml
+          git add -A area sitemap.xml data/areas.json
           if git diff --quiet -- data/facilities-fallback.json data/support-fallback.json && git diff --cached --quiet; then echo "바뀐 내용 없음"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

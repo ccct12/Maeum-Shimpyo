@@ -15,7 +15,7 @@ BASE = 'https://ccct12.github.io/Maeum-Shimpyo/'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'area')
 TODAY = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
-CSS_V = '202611231030'
+CSS_V = '202611231100'
 
 # 주소 첫 단어 → (짧은 이름, 정식 이름)
 SIDO = [
@@ -251,7 +251,7 @@ def build():
         for loc, lm in re.findall(r'<loc>(.*?)</loc>\s*<lastmod>(.*?)</lastmod>', open(sp, encoding='utf-8').read()):
             old_lastmod[loc] = lm
 
-    pages, written = {}, 0
+    pages, written, area_list = {}, 0, []
     by_sido = defaultdict(list)
     for k in sorted(areas, key=lambda k: (ORDER.index(k[0]), k[1])):
         by_sido[k[0]].append(k)
@@ -305,11 +305,12 @@ def build():
         sib = [x for x in by_sido[s] if x != k]
         if sib:
             out.append('<nav class="sib" aria-label="%s 다른 지역"><h2>%s 다른 지역</h2><p>%s</p></nav>' % (
-                e(FULL[s]), e(FULL[s]), ' '.join('<a href="%sarea/%s/">%s</a>' % (BASE, quote(slug(x)), e(x[1])) for x in sib)))
+                e(FULL[s]), e(FULL[s]), ' '.join('<a href="%sarea/%s/"><b>%s</b></a>' % (BASE, quote(slug(x)), e(x[1])) for x in sib)))
         out.append('<p class="guide"><a href="%s#guide">병원이 처음이라 걱정된다면, 비용·기록·준비물 안내 보기 ›</a></p>' % BASE)
         out.append('<p class="guide"><a href="%s#check">내 마음 먼저 살펴보기 (우울·불안 자가검진, 무료) ›</a></p>' % BASE)
         out.append(FOOT)
         pages[url] = ('area/' + slug(k) + '/index.html', ''.join(out))
+        area_list.append({'s': s, 'g': '세종시' if s == '세종' else g, 'p': slug(k), 'lat': center[0], 'lng': center[1], 'n': len(base)})
 
     # 2) 지역 목록 페이지
     url = BASE + 'area/'
@@ -322,7 +323,7 @@ def build():
         if not by_sido[s]:
             continue
         out.append('<section class="sido"><h2>%s</h2><p>%s</p></section>' % (e(FULL[s]), ' '.join(
-            '<a href="%sarea/%s/">%s <small>%d</small></a>' % (BASE, quote(slug(k)), e('세종시' if s == '세종' else k[1]),
+            '<a href="%sarea/%s/"><b>%s</b><small>%d곳</small></a>' % (BASE, quote(slug(k)), e('세종시' if s == '세종' else k[1]),
                                                                   sum(1 for f in areas[k] if not f.get('g'))) for k in by_sido[s])))
     out.append(FOOT)
     pages[url] = ('area/index.html', ''.join(out))
@@ -343,6 +344,13 @@ def build():
             open(fp, 'w', encoding='utf-8').write(body)
             written += 1
         lastmod[u] = old_lastmod.get(u, TODAY) if same else TODAY
+
+    # 앱의 '시·군·구 고르기'용 목록 (시도 순서 → 이름순)
+    area_list.sort(key=lambda a: (ORDER.index(a['s']), a['g']))
+    aj = json.dumps({'areas': area_list}, ensure_ascii=False, separators=(',', ':'))
+    ap = os.path.join(ROOT, 'data/areas.json')
+    if not os.path.exists(ap) or open(ap, encoding='utf-8').read() != aj:
+        open(ap, 'w', encoding='utf-8').write(aj)
 
     # 4) sitemap.xml
     urls = [(BASE, old_lastmod.get(BASE, TODAY))] + sorted(lastmod.items(), key=lambda x: (x[0] != url, x[0]))

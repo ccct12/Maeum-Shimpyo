@@ -18,7 +18,7 @@ var SIDO = [
 ];
 
 var state = {
-  view: 'home', sel: null, q: '', shown: CFG.LIST_STEP || 30, kind: 'all',
+  view: 'home', sel: null, gu: null, q: '', shown: CFG.LIST_STEP || 30, kind: 'all',
   filters: { open: false, night: false, sat: false, free: false, more: false },
   origin: CFG.DEFAULT_ORIGIN || { lat: 37.5663, lng: 126.9779, label: '서울시청' }, mine: false,
   data: null, dataNote: '', loadErr: false, quiz: null, stats: null
@@ -318,7 +318,10 @@ function renderPanel() {
   var chips = [['free', '무료만'], ['open', '지금 여는 곳'], ['night', '저녁 8시 이후'], ['sat', '토요일'], ['more', '그 밖의 기관도 보기']].map(function (c) {
     return '<button class="chip" data-f="' + c[0] + '" aria-pressed="' + F[c[0]] + '">' + c[1] + '</button>';
   }).join('');
-  var opts = '<option value="">지역 고르기</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '"' + (state.sido === i ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
+  var opts = '<option value="">시·도</option>' + SIDO.map(function (s, i) { return '<option value="' + i + '"' + (state.sido === i ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('');
+  var guList = state.sido != null && AREAS.list ? AREAS.list.filter(function (a) { return a.s === SIDO[state.sido][0]; }) : [];
+  var guOpts = '<option value="">' + (state.sido == null ? '시·군·구' : '시·군·구 전체') + '</option>' + guList.map(function (a) { return '<option value="' + esc(a.p) + '"' + (state.gu === a.p ? ' selected' : '') + '>' + esc(a.g) + '</option>'; }).join('');
+  var guNow = state.gu && AREAS.list ? AREAS.list.filter(function (a) { return a.p === state.gu; })[0] : null;
   var cards = list.slice(0, state.shown).map(function (f, i) {
     var s = status(f, n), c = callBtnHTML(f, 'rcall');
     return '<li' + (c ? ' class="hascall"' : '') + '><button class="row" data-id="' + esc(f.id) + '"><span class="rn"><i class="mark ' + f.c + '" aria-hidden="true">' + (i + 1) + '</i>' + esc(f.n) + '</span><span class="rd">' + fmtDist(f._d) + '</span>' +
@@ -334,7 +337,9 @@ function renderPanel() {
   }
   p.innerHTML = (isMobile() ? '<div class="sheethead"><span class="grab" aria-hidden="true"></span><button class="textbtn" id="sheetclose">지도로 돌아가기</button></div>' : '') +
     '<p class="here"><b>' + esc(state.origin.label) + '</b>에서 가까운 순서예요' + (!state.mine && state.sido == null && state.origin.label !== '지도 가운데' && !IN_KAKAO ? '<small> · 내 위치를 쓰거나 지역을 고르면 바뀌어요</small>' : '') + '</p>' +
-    '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button><select id="sido" aria-label="지역 고르기">' + opts + '</select></div>' +
+    '<div class="where"><button class="btn solid" id="locate">내 위치에서 찾기</button>' +
+      '<div class="areapick"><select id="sido" aria-label="시·도 고르기">' + opts + '</select><select id="gu" aria-label="시·군·구 고르기"' + (state.sido == null ? ' disabled' : '') + '>' + guOpts + '</select></div></div>' +
+    (guNow ? '<a class="textbtn arealink" href="area/' + encodeURIComponent(guNow.p) + '/">' + esc(areaLabel(guNow)) + ' 기관 전체 목록 보기 ›</a>' : '') +
     (state.locMsg ? '<p class="note locmsg">' + esc(state.locMsg) + (IN_KAKAO ? ' ' + externalLink() : '') + '</p>'
       : IN_KAKAO && !state.mine ? '<p class="meta">카카오톡 안에서는 내 위치가 잡히지 않을 수 있어요. 지금은 ' + esc(state.origin.label) + ' 기준이에요. ' + externalLink() + '</p>'
       : '') +
@@ -357,7 +362,7 @@ function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
     '<span>기관 정보: 건강보험심사평가원 병원정보서비스(2026), 전국건강증진센터표준데이터(각 지자체), 국립정신건강센터 정신건강 관련기관 정보(2022), 전국민 마음투자 지원사업 제공기관 목록(2024). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
     '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜·시간대별 횟수와 PC·모바일, 들어온 경로 종류(검색·카카오톡 등)만 세요.</span>' +
-    '<a class="textbtn" href="area/">지역별 기관 목록 보기 ›</a>' +
+    '<a class="textbtn" href="area/">시·군·구별 기관 목록 보기 ›</a>' +
     '<button class="textbtn" data-go="ask">정보가 틀렸거나 바라는 점이 있다면 알려 주세요 ›</button></div>';
 }
 function detailHTML(f, n) {
@@ -406,7 +411,7 @@ function useMyLocation() {
   if (!navigator.geolocation) { locMsg('이 브라우저에서는 위치를 쓸 수 없어요. 지역을 골라 주세요.'); return; }
   var b = $('locate'); if (b) b.textContent = '위치 찾는 중…';
   navigator.geolocation.getCurrentPosition(function (pos) {
-    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true; state.sido = null; state.locMsg = '';
+    state.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: '내 위치' }; state.mine = true; state.sido = null; state.gu = null; state.locMsg = '';
     afterOrigin();
   }, function () {
     locMsg(IN_KAKAO ? '카카오톡 안에서는 내 위치를 가져오지 못할 때가 많아요. 다른 브라우저로 열거나, 지역을 골라 주세요.'
@@ -444,8 +449,11 @@ function bandTable(t, score) {
 function sumHTML(t, score) {
   var d = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
   var txt = '[자가검진 요약] ' + t.sub.split(' · ')[0] + ' ' + t.name + ' · ' + (t.q.length * 3) + '점 중 ' + score + '점 (' + band(t, score).replace(/ 범위예요$/, ' 범위') + ') · ' + d + ' · 진단이 아닌 참고용';
-  return '<div class="sum"><button class="ghost" id="copysum" data-copy="' + esc(txt) + '">상담할 때 보여 줄 요약 복사하기</button>' +
-    '<p class="meta">점수와 구간만 복사돼요. 어떤 문항에 어떻게 답했는지는 담기지 않고, 어디에도 저장되지 않아요.</p></div>';
+  // 무엇이 복사되는지 먼저 보여 준다. 화면을 캡처해 가져가도 되게 카드 모양으로.
+  return '<section class="sum sumcard" aria-labelledby="sumh"><h3 id="sumh">상담할 때 보여 줄 요약</h3>' +
+    '<p class="sumtxt">' + esc(txt) + '</p>' +
+    '<button class="ghost" id="copysum" data-copy="' + esc(txt) + '">이 요약 복사하기</button>' +
+    '<p class="meta">점수와 구간만 담겨요. 어떤 문항에 어떻게 답했는지는 담기지 않고, 어디에도 저장되지 않아요. 이 화면을 캡처해 보여 줘도 돼요.</p></section>';
 }
 function copyText(t, ok) {
   function legacy() { var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); var r = false; try { r = document.execCommand('copy'); } catch (e) {} a.remove(); if (r) ok(); }
@@ -493,7 +501,7 @@ function renderCheck() {
     '<button class="' + GUIDE.b[0][2] + '" id="' + GUIDE.b[0][0] + '">' + GUIDE.b[0][1] + '</button>' +
     '<div class="rlinks">' + GUIDE.b.slice(1).map(function (x) { return '<button class="textbtn" id="' + x[0] + '">' + x[1] + ' ›</button>'; }).join('') + '</div>' +
     supRecHTML(tier) +
-    '<details class="rmore"><summary>점수 기준 · 상담할 때 보여 줄 요약</summary>' + bandTable(t, score) + sumHTML(t, score) + '</details>' +
+    sumHTML(t, score) + bandTable(t, score) +
     '<p class="note">이 결과는 진단이 아니에요. 정확한 상태는 전문가와 만나야 알 수 있어요.</p>' +
     '<button class="textbtn" id="again">다른 검진 해 보기</button>' +
     '<p class="caution">' + TEST_SRC + '</p>' +
@@ -586,6 +594,34 @@ function supCard(x, open) {
       '<div class="sact">' + (tel ? '<a href="tel:' + tel.replace(/-/g, '') + '">문의 ' + esc(tel) + '</a>' : '') +
         (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">복지로에서 보기</a>' : '') + '</div>' +
       (x.mod ? '<p class="meta">복지로에서 확인한 날 ' + esc(x.mod) + '</p>' : '') + '</div></details>';
+}
+/* ───────── 지역 고르기 (지도·지원 제도·통계가 같은 값을 쓴다) ───────── */
+var AREAS = { list: null, loading: false };
+function areaLabel(a) { return a.s === '세종' ? '세종시' : a.s + ' ' + a.g; }
+function loadAreas() {
+  if (AREAS.list || AREAS.loading) return; AREAS.loading = true;
+  getJSON('data/areas.json', 15000).then(function (j) {
+    AREAS.list = j.areas || [];
+    // 지역 페이지에서 '지도에서 보기'로 들어왔으면 그 시·군·구를 골라 둔다
+    var m = AREAS.list.filter(function (a) { return areaLabel(a) === state.origin.label; })[0];
+    if (m && state.sido == null && !state.mine) { state.gu = m.p; state.sido = sidoIndex(m.s); }
+    if (state.view === 'map' && !state.sel) renderPanelKeepFocus();
+  }).catch(function () { AREAS.loading = false; });
+}
+function sidoIndex(name) { for (var i = 0; i < SIDO.length; i++) if (SIDO[i][0] === name) return i; return null; }
+// 시·도를 바꾸면 지도 기준점과 지원 제도 '우리 지역'이 함께 바뀐다
+function setSido(i, redraw) {
+  if (i == null) return;
+  var s = SIDO[i];
+  state.sido = i; state.gu = null; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false;
+  if (state.sup) state.sup.area = s[0];
+  if (redraw) afterOrigin(); else { state.sel = null; setDistances(); K.needFit = true; }
+}
+function setGu(p) {
+  var a = (AREAS.list || []).filter(function (x) { return x.p === p; })[0]; if (!a) return;
+  state.sido = sidoIndex(a.s); state.gu = a.p; state.origin = { lat: a.lat, lng: a.lng, label: areaLabel(a) }; state.mine = false;
+  if (state.sup) state.sup.area = a.s;
+  afterOrigin();
 }
 function supState() {
   var z = state.sup || (state.sup = { tab: 'n', life: 'all', need: 'all', online: false, area: null, focus: null });
@@ -695,7 +731,8 @@ function renderFacts() {
       '<details class="fmore" id="sidomore"><summary>우리 지역은 어떤지 보기 (시·도별)</summary><div class="fig" id="fig-sido"><h3>시·도별 우울증상 유병률 (2025)</h3><p class="sub">우울증 선별도구(PHQ-9) 10점 이상인 성인 비율</p>' +
         '<svg class="chart" id="c-sido" role="img" aria-label="시도별 우울증상 유병률 막대 그래프"></svg><div class="tip" id="tip-sido"></div>' +
         '<p class="sub">' + esc(S.sido.note) + '</p><p class="src">출처: ' + esc(S.sido.src) + '</p>' +
-        tableHTML(S.sido.cols, S.sido.rows.slice().sort(function (a, b) { return b[1] - a[1]; })) + '</div></details></div>' +
+        (myArea() ? '<p class="sub">고른 지역 <b>' + esc(myArea()) + '</b>을 진하게 표시했어요.</p>' : '') +
+        tableHTML(S.sido.cols, S.sido.rows.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (r) { return [r[0]].concat(r.slice(1).map(fix1)); }), myArea()) + '</div></details></div>' +
 
     '<div class="fsec"><h2>많은 사람이 이미 도움을 청하고 있어요</h2>' +
       '<div class="tiles">' + S.tiles.help.map(tile).join('') + '</div>' +
@@ -711,10 +748,13 @@ function renderFacts() {
   lineChart();
   var sm = $('sidomore'); if (sm) sm.addEventListener('toggle', function () { if (sm.open) barChart(); });
 }
-function tableHTML(head, rows) {
+function tableHTML(head, rows, hi) {
   return '<details class="tbl"><summary>표로 보기</summary><table><thead><tr>' + head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-    rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></details>';
+    rows.map(function (r) { return '<tr' + (hi && r[0] === hi ? ' class="hi"' : '') + '>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></details>';
 }
+function fix1(v) { return typeof v === 'number' ? v.toFixed(1) : v; }
+// 지도나 지원 제도에서 직접 고른 시·도 (내 위치만 쓴 경우는 강조하지 않는다)
+function myArea() { return state.sido != null ? SIDO[state.sido][0] : state.sup && state.sup.picked ? state.sup.area : null; }
 var NS = 'http://www.w3.org/2000/svg';
 function svgEl(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
 
@@ -776,12 +816,14 @@ function barChart() {
     var y0 = Tp + i * rowH + (rowH - bh) / 2, x0 = x(0), x1 = x(r[1]), rad = Math.min(4, x1 - x0);
     svgEl('text', { x: L - 8, y: y0 + bh - 3, 'text-anchor': 'end' }, svg).textContent = r[0];
     var d = 'M' + x0 + ',' + y0 + 'H' + (x1 - rad) + 'Q' + x1 + ',' + y0 + ' ' + x1 + ',' + (y0 + rad) + 'V' + (y0 + bh - rad) + 'Q' + x1 + ',' + (y0 + bh) + ' ' + (x1 - rad) + ',' + (y0 + bh) + 'H' + x0 + 'Z';
-    var bar = svgEl('path', { d: d, fill: 'var(--s1)' }, svg);
-    svgEl('text', { x: x1 + 6, y: y0 + bh - 3, class: i === 0 || i === rows.length - 1 ? 'val' : '' }, svg).textContent = r[1] + '%';
+    var me = r[0] === myArea();
+    var bar = svgEl('path', { d: d, fill: me ? 'var(--s2)' : 'var(--s1)' }, svg);
+    if (me) svg.lastChild.previousSibling.setAttribute('class', 'val');
+    svgEl('text', { x: x1 + 6, y: y0 + bh - 3, class: me || i === 0 || i === rows.length - 1 ? 'val' : '' }, svg).textContent = fix1(r[1]) + '%';
     var hit = svgEl('rect', { x: 0, y: Tp + i * rowH, width: W, height: rowH, fill: 'transparent' }, svg);
     function show() {
       bar.setAttribute('opacity', .8);
-      tip.innerHTML = r[0] + '<br>우울증상 유병률 ' + r[1] + '%<br>스트레스 인지율 ' + r[2] + '%<br>우울감 경험률 ' + r[3] + '%';
+      tip.innerHTML = r[0] + '<br>우울증상 유병률 ' + fix1(r[1]) + '%<br>스트레스 인지율 ' + fix1(r[2]) + '%<br>우울감 경험률 ' + fix1(r[3]) + '%';
       var sr = svg.getBoundingClientRect(), fr = fig.getBoundingClientRect();
       tip.style.left = (sr.left - fr.left + x1 * sr.width / W) + 'px';
       tip.style.top = (sr.top - fr.top + y0 * sr.height / H) + 'px';
@@ -1159,6 +1201,7 @@ function go(v) {
   VIEWS.forEach(function (k) { $('v-' + k).classList.toggle('on', k === v); });
   document.querySelectorAll('[data-go]').forEach(function (b) { if (b.tagName === 'BUTTON') { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); } });
   if (v === 'map') {
+    loadAreas();
     renderPanel();
     setTimeout(function () { if (!K.map && K.ready) createMap(); else if (K.map) { K.map.relayout(); if (K.needFit) drawMap(true); } }, 30);
   }
@@ -1197,8 +1240,9 @@ document.addEventListener('click', function (e) {
   if (b.dataset.go) { e.preventDefault(); return go(b.dataset.go); }
   if (b.dataset.id) return select(b.dataset.id);
   if (b.dataset.kind) { state.kind = b.dataset.kind; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
-  if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; state.sido = null; return afterOrigin(false); }
-  if (b.id === 'copy' || b.id === 'copysum') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; }); return; }
+  if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; state.sido = null; state.gu = null; return afterOrigin(false); }
+  if (b.id === 'copy') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; }); return; }
+  if (b.id === 'copysum') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; var m = b.nextElementSibling; if (m) m.textContent = '카카오톡이나 메모장 입력칸을 길게 누르고 \'붙여넣기\'를 고르면 돼요.'; }); return; }
   if (b.id === 'breathbtn') return breathe();
   if (b.id === 'sharesite') return shareSite(b);
   if (b.id === 'sharefac') { var sf = byId(state.sel); if (sf) shareFacility(sf, b); return; }
@@ -1274,10 +1318,13 @@ document.addEventListener('click', function (e) {
   if (b.dataset.feel) { rz.feel = b.dataset.feel; return restDraw(); }
 });
 document.addEventListener('change', function (e) {
-  if (e.target.id === 'suparea') { supState().area = e.target.value; return renderSupport(); }
-  if (e.target.id === 'sido' && e.target.value !== '') {
-    state.sido = +e.target.value; var s = SIDO[state.sido]; state.origin = { lat: s[1], lng: s[2], label: s[3] }; state.mine = false; afterOrigin();
+  if (e.target.id === 'suparea') {
+    supState().area = e.target.value; state.sup.picked = true;
+    var si = sidoIndex(e.target.value); if (si != null && si !== state.sido) setSido(si, false);   // 지도도 같은 지역으로
+    return renderSupport();
   }
+  if (e.target.id === 'sido' && e.target.value !== '') return setSido(+e.target.value, true);
+  if (e.target.id === 'gu') { if (e.target.value) return setGu(e.target.value); if (state.sido != null) return setSido(state.sido, true); }
 });
 var qTimer;
 document.addEventListener('input', function (e) {

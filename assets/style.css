@@ -538,8 +538,22 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .rmore[open]>summary,.fmore[open]>summary{margin-bottom:12px}
 .rmore .sum{margin-top:12px}
 
-/* 공유·지역 목록 (처음 화면) */
-.homeshare{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:18px 0 0}
-.homeshare .ghost{min-height:48px;font-weight:600}
-.homeshare a.textbtn{display:inline-flex;align-items:center;min-height:44px;font-size:15px}
+/* 헤더 공유 버튼: 어느 화면에서나 같은 자리 (모바일·PC 공통) */
+.topshare{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:0 12px;margin-left:auto;border:1.5px solid var(--line);border-radius:12px;background:none;color:var(--ink);font-weight:600;font-size:14px}
+.topshare svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.topshare:hover{border-color:var(--green)}
+@media (min-width:900px){.top .nav{margin-left:auto}.topshare{margin-left:8px}}
+/* 기관 찾기: 시·도 → 시·군·구 */
+.where{align-items:stretch}
+.areapick{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1 1 220px}
+.areapick select{width:100%;min-height:44px}
+.areapick select:disabled{opacity:.55}
+.arealink{display:inline-flex;align-items:center;min-height:44px;font-size:15px;align-self:flex-start}
 .detail #sharefac{align-self:flex-start;min-height:44px}
+/* 자가검진 요약 카드 */
+.sumcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;gap:10px!important;margin:6px 0 4px}
+.sumcard h3{margin:0;font-size:16px}
+.sumcard .sumtxt{margin:0;padding:12px 14px;border-radius:12px;background:var(--green-soft);font-size:15px;line-height:1.6;word-break:keep-all}
+.sumcard .ghost{align-self:flex-start;min-height:48px;font-weight:600}
+.sumcard .meta{margin:0}
+.tbl tr.hi td{font-weight:700;background:color-mix(in srgb,var(--s2) 16%,transparent)}
