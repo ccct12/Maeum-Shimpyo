@@ -537,3 +537,9 @@ details.bands tr.on td{font-weight:700;color:var(--ink,inherit);background:var(-
 .rmore>summary,.fmore>summary{cursor:pointer;color:var(--green);font-weight:600;font-size:15px}
 .rmore[open]>summary,.fmore[open]>summary{margin-bottom:12px}
 .rmore .sum{margin-top:12px}
+
+/* 공유·지역 목록 (처음 화면) */
+.homeshare{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:18px 0 0}
+.homeshare .ghost{min-height:48px;font-weight:600}
+.homeshare a.textbtn{display:inline-flex;align-items:center;min-height:44px;font-size:15px}
+.detail #sharefac{align-self:flex-start;min-height:44px}

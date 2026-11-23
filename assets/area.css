@@ -1,0 +1,76 @@
+/* 마음쉼표 · 지역별 정적 페이지 (area/) — 앱과 같은 색, 가볍게 */
+:root{
+  --paper:#F1F4EF; --surface:#FBFCFA; --ink:#1E2A25; --muted:#586861; --line:#D3DBD4;
+  --green:#2B6650; --green-soft:#DCE8E0; --on-green:#FBFCFA; --apricot:#E59A5A;
+  --band:#1E2A25; --band-ink:#F1F4EF; --warn:#85560C;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#141B18; --surface:#1C2521; --ink:#E7EEE9; --muted:#9DAEA6; --line:#2F3B36;
+    --green:#8CCBAE; --green-soft:#24362E; --on-green:#11201A; --band:#0D1311; --band-ink:#E7EEE9; --warn:#E6BC74;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--green)}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;max-width:880px;margin:0 auto}
+.brand{font-family:"Gowun Dodum","IBM Plex Sans KR",sans-serif;font-size:22px;font-weight:700;color:var(--ink);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.brand span{color:var(--apricot)}
+.tomap{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;text-decoration:none;font-weight:600;font-size:15px}
+.crisis{position:sticky;top:0;z-index:5;background:var(--band);color:var(--band-ink);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 14px;padding:4px 12px;font-size:14px}
+.crisis a{color:var(--band-ink);font-weight:600;min-height:44px;display:inline-flex;align-items:center;text-underline-offset:3px}
+main,.foot{max-width:880px;margin:0 auto;padding:0 18px}
+.crumb{font-size:14px;color:var(--muted);padding:14px 0 0}
+.crumb a{color:var(--muted)}
+h1{font-family:"Gowun Dodum","IBM Plex Sans KR",sans-serif;font-size:30px;line-height:1.3;margin:10px 0 8px}
+h1 small{font-size:19px;color:var(--muted);font-weight:500}
+h2{font-size:20px;margin:36px 0 4px}
+h2 small{font-size:15px;color:var(--muted);font-weight:500}
+.lead{font-size:17px;margin:0 0 16px}
+.note,.meta{color:var(--muted);font-size:15px;margin:2px 0 12px}
+.sum{list-style:none;padding:0;margin:0 0 16px;display:flex;flex-wrap:wrap;gap:8px}
+.sum li{flex:1 1 0;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
+.sum b{display:block;font-size:22px;color:var(--green)}
+.sum span{font-size:13px;color:var(--muted)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 6px}
+.go{flex:1 1 220px;min-height:52px;display:flex;align-items:center;justify-content:center;background:var(--green);color:var(--on-green);border-radius:14px;font-weight:600;text-decoration:none;padding:0 16px}
+.ghost{flex:0 1 auto;min-height:52px;background:none;border:1.5px solid var(--line);border-radius:14px;padding:0 18px;font-weight:600}
+.list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.list li{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.it{min-width:0}
+.it h3{font-size:17px;margin:0 0 2px;line-height:1.4}
+.it p{margin:0;font-size:14.5px}
+.it .k{color:var(--muted)}
+.it .h{margin-top:4px}
+.it .old{color:var(--warn);margin-top:4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px!important}
+.tag{background:var(--green-soft);color:var(--ink);border-radius:999px;padding:1px 10px;font-size:13px}
+.ac{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;align-items:stretch}
+.ac a{min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;padding:0 12px;font-size:14.5px;font-weight:600;text-decoration:none;white-space:nowrap}
+.ac .call{background:var(--green);color:var(--on-green)}
+.ac .map{border:1.5px solid var(--line)}
+details.etc{margin:28px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px 14px}
+details.etc summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
+details.etc .list{padding:6px 0 10px}
+details.etc .list li{border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 0;background:none}
+.sib p,.sido p{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0}
+.sib a,.sido a{min-height:44px;display:inline-flex;align-items:center;gap:4px;padding:0 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink);font-size:15px}
+.sido a small{color:var(--muted)}
+.guide{margin:14px 0 0}
+.guide a{display:inline-flex;min-height:44px;align-items:center;font-weight:600;text-underline-offset:4px}
+.foot{margin-top:44px;padding-top:16px;padding-bottom:40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.foot p{margin:6px 0}
+.foot a{color:var(--muted);display:inline-flex;min-height:44px;align-items:center}
+:focus-visible{outline:3px solid var(--apricot);outline-offset:2px}
+@media (max-width:560px){
+  h1{font-size:26px}
+  .sum li{flex:1 1 28%}
+  .ghost{flex:1 1 100%}
+  .list li{flex-direction:column}
+  .ac{flex-direction:row;width:100%}
+  .ac a{flex:1}
+  .crisis{font-size:13px;gap:0 10px}
+}

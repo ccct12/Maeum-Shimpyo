@@ -357,6 +357,7 @@ function footHTML() {
   return '<div class="foot"><span>목록은 거리순으로만 보여줘요. 광고·후기·유료 노출은 없어요.</span>' +
     '<span>기관 정보: 건강보험심사평가원 병원정보서비스(2026), 전국건강증진센터표준데이터(각 지자체), 국립정신건강센터 정신건강 관련기관 정보(2022), 전국민 마음투자 지원사업 제공기관 목록(2024). 일부 좌표: TMAP. ' + esc(state.dataNote) + '</span>' +
     '<span>내 위치는 이 기기 안에서 거리 계산에만 쓰고, 어디에도 보내거나 저장하지 않아요. 방문 통계는 날짜·시간대별 횟수와 PC·모바일, 들어온 경로 종류(검색·카카오톡 등)만 세요.</span>' +
+    '<a class="textbtn" href="area/">지역별 기관 목록 보기 ›</a>' +
     '<button class="textbtn" data-go="ask">정보가 틀렸거나 바라는 점이 있다면 알려 주세요 ›</button></div>';
 }
 function detailHTML(f, n) {
@@ -391,6 +392,7 @@ function detailHTML(f, n) {
     '<div class="rows"><div><span>주소</span><span>' + esc(f.a) + ' <button class="textbtn" id="copy" data-copy="' + esc(f.a) + '">복사</button></span></div>' +
       (web ? '<div><span>홈페이지</span><span><a href="' + esc(web) + '" target="_blank" rel="noopener nofollow">열기</a></span></div>' : '') +
       '<div><span>정보 출처</span><span>' + esc(srcLabel(f)) + (f.d ? ', ' + esc(f.d) + ' 기준' : '') + '</span></div></div>' +
+    '<button class="textbtn" id="sharefac">이 기관 정보 보내기</button>' +
     (old ? '<p class="note">' + old + '년 자료라 지금은 옮겼거나 운영하지 않을 수 있어요. 가기 전에 꼭 ' + (tel ? '전화로 ' : '연락처를 찾아 ') + '확인해 주세요.</p>' : '') +
     '<p class="caution">공공데이터 기준이라 실제와 다를 수 있어요. 첫 방문은 예약이 필요한 곳이 많으니 가기 전에 ' + (tel ? '전화로 ' : '') + '확인해 주세요.</p>' +
     '<button class="textbtn" data-go="guide">병원이 처음이라 걱정된다면 ›</button>' + reportHTML(f) + '</div>';
@@ -1041,6 +1043,9 @@ function hit(ev, extra) {
 function srcKind() {
   if (IN_KAKAO) return 'kakao';
   var r = ''; try { r = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) {}
+  var fr = ''; try { fr = new URLSearchParams(LINK_Q).get('from') || ''; } catch (e) {}
+  if (/^(insta|instagram|sns)$/i.test(fr)) return 'sns';
+  try { if (r === location.hostname && /\/area\//.test(new URL(document.referrer).pathname)) return 'area'; } catch (e) {}
   if (!r || r === location.hostname) return 'direct';
   if (/kakao/.test(r)) return 'kakao';
   if (/instagram|facebook|(^|\.)t\.co$|twitter|(^|\.)x\.com$|threads|band\.us|youtube|tiktok|blog\.naver|cafe\.naver|blog\.daum|cafe\.daum|tistory/.test(r)) return 'sns';
@@ -1120,6 +1125,31 @@ function renderAsk() {
     '<button class="primary" id="asksend"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? '보내는 중…' : '보내기') + '</button>';
 }
 
+/* ───────── 바로가기 주소·공유 ─────────
+ * ?near=위도,경도&label=이름 : 지역별 페이지에서 '지도에서 보기'로 들어올 때 그 동네를 기준점으로
+ * ?id=기관ID              : 공유받은 기관 상세를 바로 연다
+ * 위치·검진 응답은 주소에 넣지 않는다(공유 링크에는 기관 ID나 동네 이름만 들어간다).
+ */
+function readLink() {
+  var o = {}, sp; try { sp = new URLSearchParams(LINK_Q); } catch (e) { return o; }
+  var m = /^(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)$/.exec(sp.get('near') || '');
+  if (m && +m[1] > 32 && +m[1] < 39.5 && +m[2] > 124 && +m[2] < 132) o.near = { lat: +m[1], lng: +m[2], label: String(sp.get('label') || '고른 지역').slice(0, 24) };
+  var id = sp.get('id'); if (id && /^[HC]-\d{3,6}$/.test(id)) o.id = id;
+  return o;
+}
+var SITE = location.origin + location.pathname, LINK_Q = location.search;   // start()가 주소를 정리하기 전에 받아 둔다
+function shareIt(d, btn, done) {
+  hit('share');
+  function copied() { btn.textContent = done || '링크를 복사했어요'; }
+  function copy() { copyText(d.text + '\n' + d.url, copied); }
+  if (navigator.share) navigator.share(d).catch(function (err) { if (err && err.name !== 'AbortError') copy(); });
+  else copy();
+}
+function shareSite(btn) { shareIt({ title: '마음쉼표', text: '가까운 정신건강의학과·무료 상담기관을 찾고, 마음을 살펴볼 수 있는 곳이에요. 가입 없이 무료예요.', url: SITE }, btn); }
+function shareFacility(f, btn) {
+  shareIt({ title: f.n, text: f.n + (f.tel ? '\n전화 ' + f.tel : '') + '\n' + f.a, url: SITE + '?id=' + encodeURIComponent(f.id) + '#map' }, btn, '복사했어요. 원하는 곳에 붙여 넣어 주세요');
+}
+
 /* ───────── 화면 전환 ───────── */
 var VIEWS = ['home', 'map', 'check', 'rest', 'facts', 'guide', 'ask', 'support'];
 function go(v) {
@@ -1170,6 +1200,8 @@ document.addEventListener('click', function (e) {
   if (b.id === 'research') { var c = K.map.getCenter(); state.origin = { lat: c.getLat(), lng: c.getLng(), label: '지도 가운데' }; state.mine = false; state.sido = null; return afterOrigin(false); }
   if (b.id === 'copy' || b.id === 'copysum') { copyText(b.dataset.copy, function () { b.textContent = '복사했어요'; }); return; }
   if (b.id === 'breathbtn') return breathe();
+  if (b.id === 'sharesite') return shareSite(b);
+  if (b.id === 'sharefac') { var sf = byId(state.sel); if (sf) shareFacility(sf, b); return; }
   if (b.dataset.f) { state.filters[b.dataset.f] = !state.filters[b.dataset.f]; state.shown = CFG.LIST_STEP || 30; renderPanel(); return drawMap(true); }
   if (b.id === 'back') { if ((history.state || {}).sel) return history.back(); state.sel = null; state.report = null; if (isMobile()) setSheet(false); renderPanel(); return drawMap(false); }
   if (b.id === 'sheetclose') return closeSheet();
@@ -1263,13 +1295,19 @@ setInterval(function () { if (state.view === 'map' && !state.sel) renderPanelKee
 function renderPanelKeepFocus() { if (document.activeElement && document.activeElement.id === 'q') return; renderPanel(); drawMap(false); }
 
 (function start() {
-  var v = location.hash.slice(1);
-  try { history.replaceState({ v: 'home' }, '', '#home'); } catch (e) {}   // 바로 들어온 화면에서 뒤로 가면 처음 화면으로
+  var v = location.hash.slice(1), P = readLink();
+  if (P.near || P.id) v = 'map';
+  try { history.replaceState({ v: 'home' }, '', location.pathname + '#home'); } catch (e) {}   // 바로 들어온 화면에서 뒤로 가면 처음 화면으로 (주소 뒤 ?near= 등은 지운다)
+  if (P.near) { state.origin = P.near; state.mine = false; state.sido = null; }
   go(VIEWS.indexOf(v) >= 0 ? v : 'home');
   hitVisit();
   loadKakao();
   var first = true;
-  loadData(function () { if (state.view === 'map' && !state.sel) renderPanel(); drawMap(first); first = false; });
+  loadData(function () {
+    if (P.id && byId(P.id)) { var f = byId(P.id); if (!P.near) { state.origin = { lat: f.lat, lng: f.lng, label: f.n }; setDistances(); } select(P.id); P.id = null; }
+    else if (state.view === 'map' && !state.sel) renderPanel();
+    drawMap(first); first = false;
+  });
   loadSupport();
 })();
 })();

@@ -1,0 +1,15 @@
+{
+  "name": "마음쉼표 · 정신건강의학과·상담기관 찾기",
+  "short_name": "마음쉼표",
+  "description": "가까운 정신건강의학과·정신건강복지센터·심리상담소 찾기, 우울·불안 자가검진, 마음 지원 제도",
+  "lang": "ko",
+  "start_url": "./#home",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F1F4EF",
+  "theme_color": "#F1F4EF",
+  "icons": [
+    { "src": "assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

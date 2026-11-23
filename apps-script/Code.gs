@@ -283,17 +283,17 @@ function safe_(v) { return /^[=+\-@]/.test(v) ? "'" + v : v; }
  * IP·기기 정보·위치·자가검진 응답은 받지도 저장하지도 않는다.
  * - open  : 페이지를 연 횟수(접속). 시간대별로도 센다(방문_시간대 탭)
  * - visit : 기기별 하루 첫 접속(순 방문자). 함께 오는 값은 분류 이름뿐이다
- *           nw=1/0 (이 기기에서 처음/다시), dv=pc/m (PC/모바일), src=direct/kakao/search/sns/etc (들어온 경로)
+ *           nw=1/0 (이 기기에서 처음/다시), dv=pc/m (PC/모바일), src=direct/kakao/search/sns/area/etc (들어온 경로)
  * 열이 없으면 '방문_기록' 1행 끝에 자동으로 추가한다.
  */
 var HIT_COL = {
   visit: '방문', open: '접속', 'view:home': '처음', 'view:map': '기관 찾기', 'view:check': '마음 살펴보기',
   'view:rest': '마음 쉬기', 'view:ask': '알려 주세요', 'view:facts': '마음 통계', 'view:guide': '병원이 처음이라면',
-  'view:support': '지원 제도', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화',
+  'view:support': '지원 제도', tel: '기관 전화', route: '길찾기', crisis: '위기상담 전화', share: '공유',
   'tri:calm': '3갈래_버거워요', 'tri:find': '3갈래_찾기'
 };
 var HIT_DV = { pc: 'PC', m: '모바일' };
-var HIT_SRC = { direct: '유입_직접', kakao: '유입_카카오톡', search: '유입_검색', sns: '유입_SNS', etc: '유입_기타' };
+var HIT_SRC = { direct: '유입_직접', kakao: '유입_카카오톡', search: '유입_검색', sns: '유입_SNS', area: '유입_지역페이지', etc: '유입_기타' };
 
 function hit_(p) {
   p = p || {};

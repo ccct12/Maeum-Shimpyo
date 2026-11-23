@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/update-fallback.yml'
       - 'scripts/update_fallback.py'
+      - 'scripts/build_area_pages.py'
 
 permissions:
   contents: write
@@ -26,11 +27,14 @@ jobs:
           python-version: '3.12'
       - name: Apps Script에서 기관 목록 받기
         run: python scripts/update_fallback.py
+      - name: 지역별 페이지·sitemap 만들기
+        run: python scripts/build_area_pages.py
       - name: 바뀌었으면 커밋
         run: |
-          if git diff --quiet -- data/facilities-fallback.json data/support-fallback.json; then echo "바뀐 내용 없음"; exit 0; fi
+          git add -A area sitemap.xml
+          if git diff --quiet -- data/facilities-fallback.json data/support-fallback.json && git diff --cached --quiet; then echo "바뀐 내용 없음"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/facilities-fallback.json data/support-fallback.json
-          git commit -m "예비 데이터 자동 갱신"
+          git commit -m "예비 데이터·지역 페이지 자동 갱신"
           git push
